@@ -8,14 +8,14 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
  * Every dashboard page/action should call this instead of trusting
  * any shop identifier passed in from the browser.
  */
-export async function getCurrentShopOrRedirect() {
+export async function getCurrentShop() {
   const supabase = await createServerSupabaseClient();
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) redirect("/login");
+  if (!user) return null;
 
   const { data: membership } = await supabase
     .from("shop_members")
@@ -25,9 +25,7 @@ export async function getCurrentShopOrRedirect() {
     .maybeSingle();
 
   if (!membership || !membership.shops) {
-    // Authenticated but has no shop yet (shouldn't normally happen
-    // since signup creates one atomically) — send to onboarding.
-    redirect("/signup");
+    return null;
   }
 
   return {
@@ -36,4 +34,10 @@ export async function getCurrentShopOrRedirect() {
     permissions: membership.permissions as Record<string, boolean>,
     shop: membership.shops as any,
   };
+}
+
+export async function getCurrentShopOrRedirect() {
+  const current = await getCurrentShop();
+  if (!current) redirect("/login");
+  return current;
 }

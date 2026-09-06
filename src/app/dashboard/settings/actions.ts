@@ -4,16 +4,21 @@ import { revalidatePath } from "next/cache";
 import DOMPurify from "isomorphic-dompurify";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getCurrentShopOrRedirect } from "@/lib/current-shop";
+import { getCurrentShop, getCurrentShopOrRedirect } from "@/lib/current-shop";
 import { shopSettingsSchema, ALLOWED_IMAGE_MIME_TYPES, MAX_IMAGE_BYTES } from "@/lib/validation";
 import { safeLogAudit } from "@/lib/audit";
 import { sniffImageType, getPublicAssetUrl } from "@/lib/images";
 
 export async function updateShopSettingsAction(formData: FormData) {
-  const { shop, user, role } = await getCurrentShopOrRedirect();
-  if (role !== "OWNER") {
-    return { error: "Only the shop owner can change storefront settings." };
-  }
+  try {
+    const session = await getCurrentShop();
+    if (!session) {
+      return { error: "Your session has expired. Please log in again." };
+    }
+    const { shop, user, role } = session;
+    if (role !== "OWNER") {
+      return { error: "Only the shop owner can change storefront settings." };
+    }
 
   const rawName = formData.get("name");
   const rawDescription = formData.get("description");
@@ -54,14 +59,26 @@ export async function updateShopSettingsAction(formData: FormData) {
     ? DOMPurify.sanitize(parsed.data.description, { ALLOWED_TAGS: [] })
     : null;
 
-  const admin = createAdminClient();
+  const supabase = await createServerSupabaseClient();
+
+  // Helper to obtain admin client if available, else null
+  const getAdminOrNull = () => {
+    try {
+      return createAdminClient();
+    } catch {
+      return null;
+    }
+  };
+
+  const adminClient = getAdminOrNull();
+  const dbClient = adminClient || supabase;
 
   // Fetch current theme to preserve existing theme data while adding customizations
-  const { data: currentShopData } = await admin
+  const { data: currentShopData } = await dbClient
     .from("shops")
     .select("theme, logo_url, cover_image_url")
     .eq("id", shop.id)
-    .single();
+    .maybeSingle();
 
   const currentTheme = (currentShopData?.theme && typeof currentShopData.theme === "object")
     ? currentShopData.theme
@@ -93,7 +110,8 @@ export async function updateShopSettingsAction(formData: FormData) {
         if (sniffed && ALLOWED_IMAGE_MIME_TYPES.includes(sniffed)) {
           const ext = sniffed.split("/")[1] || "png";
           const path = `shops/${shop.id}/logo/${Date.now()}.${ext}`;
-          const { error: uploadErr } = await admin.storage
+          const storageClient = adminClient || supabase;
+          const { error: uploadErr } = await storageClient.storage
             .from("shop-assets")
             .upload(path, bytes, { contentType: sniffed, upsert: true });
 
@@ -119,7 +137,8 @@ export async function updateShopSettingsAction(formData: FormData) {
         if (sniffed && ALLOWED_IMAGE_MIME_TYPES.includes(sniffed)) {
           const ext = sniffed.split("/")[1] || "jpg";
           const path = `shops/${shop.id}/cover/${Date.now()}.${ext}`;
-          const { error: uploadErr } = await admin.storage
+          const storageClient = adminClient || supabase;
+          const { error: uploadErr } = await storageClient.storage
             .from("shop-assets")
             .upload(path, bytes, { contentType: sniffed, upsert: true });
 
@@ -135,28 +154,52 @@ export async function updateShopSettingsAction(formData: FormData) {
     }
   }
 
-  const { data: updatedShop, error: updateError } = await admin
+  const updatePayload = {
+    name: parsed.data.name,
+    description,
+    whatsapp_number: parsed.data.whatsappNumber,
+    phone: parsed.data.phone,
+    address: parsed.data.address,
+    city: parsed.data.city,
+    state: parsed.data.state,
+    pincode: parsed.data.pincode,
+    theme: updatedTheme,
+    logo_url: logoUrl,
+    cover_image_url: coverImageUrl,
+  };
+
+  let updatedShop: any = null;
+  let updateError: any = null;
+
+  // Try updating via supabase authenticated client first
+  const { data: userUpdated, error: userError } = await supabase
     .from("shops")
-    .update({
-      name: parsed.data.name,
-      description,
-      whatsapp_number: parsed.data.whatsappNumber,
-      phone: parsed.data.phone,
-      address: parsed.data.address,
-      city: parsed.data.city,
-      state: parsed.data.state,
-      pincode: parsed.data.pincode,
-      theme: updatedTheme,
-      logo_url: logoUrl,
-      cover_image_url: coverImageUrl,
-    })
+    .update(updatePayload)
     .eq("id", shop.id)
     .select("id, name, slug, description, whatsapp_number, phone, address, city, state, pincode, theme, logo_url, cover_image_url, is_published")
-    .single();
+    .maybeSingle();
 
-  if (updateError) {
+  if (!userError && userUpdated) {
+    updatedShop = userUpdated;
+  } else if (adminClient) {
+    const { data: adminUpdated, error: adminErr } = await adminClient
+      .from("shops")
+      .update(updatePayload)
+      .eq("id", shop.id)
+      .select("id, name, slug, description, whatsapp_number, phone, address, city, state, pincode, theme, logo_url, cover_image_url, is_published")
+      .maybeSingle();
+    if (!adminErr && adminUpdated) {
+      updatedShop = adminUpdated;
+    } else {
+      updateError = adminErr || userError;
+    }
+  } else {
+    updateError = userError;
+  }
+
+  if (updateError || !updatedShop) {
     console.error("Error updating shop settings:", updateError);
-    return { error: updateError.message || "Could not save settings. Please try again." };
+    return { error: updateError?.message || "Could not save settings. Please try again." };
   }
 
   await safeLogAudit({
@@ -167,41 +210,89 @@ export async function updateShopSettingsAction(formData: FormData) {
     targetId: shop.id,
   });
 
-  revalidatePath("/dashboard");
-  revalidatePath("/dashboard/settings");
-  revalidatePath(`/${shop.slug}`);
-  revalidatePath(`/${shop.slug}/products`);
+  try {
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/settings");
+    revalidatePath(`/${shop.slug}`);
+    revalidatePath(`/${shop.slug}/products`);
+  } catch {}
+
   return { success: true, shop: updatedShop };
+  } catch (err: any) {
+    console.error("updateShopSettingsAction fatal error:", err);
+    return { error: err?.message || "Failed to update settings. Please try again." };
+  }
 }
 
 export async function togglePublishAction(publish: boolean) {
-  const { shop, user, role } = await getCurrentShopOrRedirect();
-  if (role !== "OWNER") return { error: "Only the owner can publish/unpublish the storefront." };
+  try {
+    const session = await getCurrentShop();
+    if (!session) {
+      return { error: "Your session has expired. Please refresh and log in again." };
+    }
+    const { shop, user, role } = session;
+    if (role !== "OWNER") {
+      return { error: "Only the shop owner can publish/unpublish the storefront." };
+    }
 
-  const admin = createAdminClient();
-  const { data: updatedShop, error } = await admin
-    .from("shops")
-    .update({ is_published: publish })
-    .eq("id", shop.id)
-    .select("id, name, slug, is_published")
-    .single();
+    const supabase = await createServerSupabaseClient();
+    let updatedShop: any = null;
+    let updateError: any = null;
 
-  if (error) {
-    console.error("Publish toggle error:", error);
-    return { error: error.message || "Could not update publish state." };
+    // 1. Try updating as authenticated user (RLS permits owner to update own shop)
+    const { data: userUpdated, error: userError } = await supabase
+      .from("shops")
+      .update({ is_published: publish })
+      .eq("id", shop.id)
+      .select("id, name, slug, is_published")
+      .maybeSingle();
+
+    if (!userError && userUpdated) {
+      updatedShop = userUpdated;
+    } else {
+      // 2. Fallback to admin client if service role is available
+      try {
+        const admin = createAdminClient();
+        const { data: adminUpdated, error: adminErr } = await admin
+          .from("shops")
+          .update({ is_published: publish })
+          .eq("id", shop.id)
+          .select("id, name, slug, is_published")
+          .maybeSingle();
+
+        if (!adminErr && adminUpdated) {
+          updatedShop = adminUpdated;
+        } else {
+          updateError = adminErr || userError;
+        }
+      } catch {
+        updateError = userError;
+      }
+    }
+
+    if (updateError || !updatedShop) {
+      console.error("Publish toggle error:", updateError);
+      return { error: updateError?.message || "Could not update publish state." };
+    }
+
+    await safeLogAudit({
+      shopId: shop.id,
+      actorId: user.id,
+      action: publish ? "shop.publish" : "shop.unpublish",
+      targetType: "shop",
+      targetId: shop.id,
+    });
+
+    try {
+      revalidatePath("/dashboard");
+      revalidatePath("/dashboard/settings");
+      revalidatePath(`/${shop.slug}`);
+      revalidatePath(`/${shop.slug}/products`);
+    } catch {}
+
+    return { success: true, isPublished: publish, shop: updatedShop };
+  } catch (err: any) {
+    console.error("togglePublishAction fatal error:", err);
+    return { error: err?.message || "Failed to update publish state. Please try again." };
   }
-
-  await safeLogAudit({
-    shopId: shop.id,
-    actorId: user.id,
-    action: publish ? "shop.publish" : "shop.unpublish",
-    targetType: "shop",
-    targetId: shop.id,
-  });
-
-  revalidatePath("/dashboard");
-  revalidatePath("/dashboard/settings");
-  revalidatePath(`/${shop.slug}`);
-  revalidatePath(`/${shop.slug}/products`);
-  return { success: true, isPublished: publish, shop: updatedShop };
 }

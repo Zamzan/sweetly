@@ -30,7 +30,12 @@ export function PublishToggle({ isPublished }: { isPublished: boolean }) {
         setTimeout(() => setFeedback(null), 4000);
       }
     } catch (err: any) {
-      setError(err?.message || "Failed to update publish state. Please try again.");
+      const raw = err?.message || "";
+      if (raw.includes("Minified React error") || raw.includes("react.dev/errors")) {
+        setError("Unable to update publish state. Please refresh the page and try again.");
+      } else {
+        setError(raw || "Failed to update publish state. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
