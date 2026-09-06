@@ -90,24 +90,45 @@ export async function POST(request: NextRequest) {
 
   // 1. Persist the custom order (service role — the customer has no
   //    Supabase session, so this can't go through RLS as "them").
-  const { data: customOrder, error: insertError } = await admin
-    .from("custom_orders")
-    .insert({
-      shop_id: shop.id,
-      category_id: formData.get("categoryId")?.toString().trim() || null,
-      reference_product_id: formData.get("referenceProductId")?.toString().trim() || null,
-      customer_name: DOMPurify.sanitize(parsed.data.customerName, { ALLOWED_TAGS: [] }),
-      customer_phone: parsed.data.customerPhone,
-      occasion: parsed.data.occasion ? DOMPurify.sanitize(parsed.data.occasion, { ALLOWED_TAGS: [] }) : null,
-      product_type: parsed.data.productType ? DOMPurify.sanitize(parsed.data.productType, { ALLOWED_TAGS: [] }) : null,
-      quantity: parsed.data.quantity,
-      budget_per_unit: parsed.data.budgetPerUnit,
-      total_budget: parsed.data.totalBudget,
-      desired_date: parsed.data.desiredDate,
-      instructions: parsed.data.instructions ? DOMPurify.sanitize(parsed.data.instructions, { ALLOWED_TAGS: [] }) : null,
-    })
-    .select("id")
-    .single();
+  let customOrder: { id: string } | null = null;
+  let insertError: any = null;
+
+  const corePayload = {
+    shop_id: shop.id,
+    customer_name: DOMPurify.sanitize(parsed.data.customerName, { ALLOWED_TAGS: [] }),
+    customer_phone: parsed.data.customerPhone,
+    occasion: parsed.data.occasion ? DOMPurify.sanitize(parsed.data.occasion, { ALLOWED_TAGS: [] }) : null,
+    product_type: parsed.data.productType ? DOMPurify.sanitize(parsed.data.productType, { ALLOWED_TAGS: [] }) : null,
+    quantity: parsed.data.quantity,
+    budget_per_unit: parsed.data.budgetPerUnit,
+    total_budget: parsed.data.totalBudget,
+    desired_date: parsed.data.desiredDate,
+    instructions: parsed.data.instructions ? DOMPurify.sanitize(parsed.data.instructions, { ALLOWED_TAGS: [] }) : null,
+  };
+
+  const categoryId = formData.get("categoryId")?.toString().trim();
+  const refProdId = formData.get("referenceProductId")?.toString().trim();
+
+  // Level 1: Try with enhanced columns (category_id, reference_product_id)
+  const enhancedPayload: any = {
+    ...corePayload,
+    ...(categoryId ? { category_id: categoryId } : {}),
+    ...(refProdId ? { reference_product_id: refProdId } : {}),
+  };
+
+  const res1 = await admin.from("custom_orders").insert(enhancedPayload).select("id").maybeSingle();
+  if (!res1.error && res1.data) {
+    customOrder = res1.data;
+  } else {
+    // Level 2: Fallback to core columns if enhanced columns are not in schema cache
+    const res2 = await admin.from("custom_orders").insert(corePayload).select("id").maybeSingle();
+    if (!res2.error && res2.data) {
+      customOrder = res2.data;
+    } else {
+      insertError = res2.error || res1.error;
+      console.error("Custom order insert failed:", insertError);
+    }
+  }
 
   if (insertError || !customOrder) {
     return NextResponse.json({ error: "Could not save your order. Please try again." }, { status: 500 });
