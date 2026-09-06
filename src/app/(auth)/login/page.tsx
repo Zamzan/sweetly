@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useActionState } from "react";
+import { useState, useEffect, useActionState, Suspense } from "react";
 import { useFormStatus } from "react-dom";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -19,7 +19,7 @@ function SubmitButton() {
   );
 }
 
-export default function LoginPage() {
+function LoginForm() {
   const [state, formAction] = useActionState(loginAction, undefined);
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
@@ -161,5 +161,27 @@ export default function LoginPage() {
         </p>
       </div>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12">
+          <div className="rounded-2xl border border-brand-100 bg-white p-8 shadow-sm animate-pulse">
+            <div className="h-6 w-32 bg-brand-100 rounded mb-4" />
+            <div className="h-4 w-48 bg-brand-50 rounded mb-8" />
+            <div className="space-y-4">
+              <div className="h-10 bg-brand-50 rounded" />
+              <div className="h-10 bg-brand-50 rounded" />
+              <div className="h-10 bg-brand-600/30 rounded" />
+            </div>
+          </div>
+        </main>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }

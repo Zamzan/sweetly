@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
-export default function ResetPasswordPage() {
+function ResetPasswordContent() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -169,5 +169,27 @@ export default function ResetPasswordPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12">
+          <div className="rounded-2xl border border-brand-100 bg-white p-8 shadow-sm animate-pulse">
+            <div className="h-6 w-36 bg-brand-100 rounded mb-4" />
+            <div className="h-4 w-52 bg-brand-50 rounded mb-8" />
+            <div className="space-y-4">
+              <div className="h-10 bg-brand-50 rounded" />
+              <div className="h-10 bg-brand-50 rounded" />
+              <div className="h-10 bg-brand-600/30 rounded" />
+            </div>
+          </div>
+        </main>
+      }
+    >
+      <ResetPasswordContent />
+    </Suspense>
   );
 }
