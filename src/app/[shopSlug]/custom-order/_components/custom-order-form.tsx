@@ -39,6 +39,7 @@ export function CustomOrderForm({
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>(defaultCategory);
   const [selectedReferenceId, setSelectedReferenceId] = useState<string>("");
   const [productType, setProductType] = useState<string>(defaultProductType);
+  const [customerPhone, setCustomerPhone] = useState<string>("");
 
   function handleSelectReference(prod: ReferenceProduct) {
     if (selectedReferenceId === prod.id) {
@@ -191,7 +192,32 @@ export function CustomOrderForm({
 
         <div className="grid gap-4 md:grid-cols-2">
           <Field label="Your Full Name" name="customerName" placeholder="e.g. Ayesha Sharma" required />
-          <Field label="WhatsApp / Phone Number" name="customerPhone" placeholder="10-digit mobile number (e.g. 9876543210)" required />
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label htmlFor="customerPhone" className="block text-sm font-medium text-brand-800">
+                WhatsApp / Phone Number <span className="text-red-500">*</span>
+              </label>
+              {customerPhone.length > 0 && (
+                <span className={`text-[11px] font-semibold ${customerPhone.length === 10 ? "text-emerald-600" : "text-amber-600"}`}>
+                  {customerPhone.length}/10 digits
+                </span>
+              )}
+            </div>
+            <input
+              id="customerPhone"
+              name="customerPhone"
+              type="tel"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={10}
+              required
+              value={customerPhone}
+              onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+              placeholder="10-digit mobile number (e.g. 9876543210)"
+              className="w-full rounded-xl border border-brand-200 bg-brand-50/20 px-3.5 py-2.5 text-sm transition focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+            />
+            <p className="mt-1 text-[11px] text-brand-500">Numbers only, max 10 digits.</p>
+          </div>
           <Field label="Occasion / Event" name="occasion" placeholder="Birthday, Wedding, Festival, Corporate…" />
           <Field
             label="Item / Product Type"

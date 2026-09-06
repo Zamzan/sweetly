@@ -23,13 +23,18 @@ export const RESERVED_SLUGS = new Set([
 
 export function normalizePhone(val: unknown): string {
   if (typeof val !== "string") return "";
-  let cleaned = val.trim().replace(/[\s\-()+]/g, "");
+  // Strip all non-digit characters (removes letters, emojis, spaces, punctuation)
+  let cleaned = val.replace(/\D/g, "");
   // If user entered with 91 prefix (12 digits starting with 91), strip it
   if (cleaned.length === 12 && cleaned.startsWith("91")) {
     cleaned = cleaned.slice(2);
   } else if (cleaned.length === 11 && cleaned.startsWith("0")) {
     // If user entered with leading 0 (11 digits starting with 0), strip it
     cleaned = cleaned.slice(1);
+  }
+  // Strictly enforce max 10 digits
+  if (cleaned.length > 10) {
+    cleaned = cleaned.slice(0, 10);
   }
   return cleaned;
 }
@@ -91,7 +96,7 @@ export const shopSettingsSchema = z.object({
   whatsappNumber: phoneSchema,
   phone: z.preprocess(
     (val) => (typeof val === "string" && val.trim() ? normalizePhone(val) : null),
-    z.string().regex(/^\+?[1-9]\d{9,14}$/, "Enter a valid phone number").optional().nullable()
+    z.string().regex(/^[6-9]\d{9}$/, "Enter a valid 10-digit Indian mobile number").optional().nullable()
   ),
   address: z.preprocess(emptyToNull, z.string().max(300).optional().nullable()),
   city: z.preprocess(emptyToNull, z.string().max(100).optional().nullable()),

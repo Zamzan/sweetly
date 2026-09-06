@@ -295,35 +295,57 @@ export function SettingsForm({ shop }: { shop: ShopData }) {
         {/* Contact Numbers */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <label className="mb-1 block text-sm font-medium text-brand-800">
-              WhatsApp Order Number <span className="text-red-500">*</span>
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-brand-800">
+                WhatsApp Order Number <span className="text-red-500">*</span>
+              </label>
+              {whatsappNumber.length > 0 && (
+                <span className={`text-[11px] font-semibold ${whatsappNumber.length === 10 ? "text-emerald-600" : "text-amber-600"}`}>
+                  {whatsappNumber.length}/10 digits
+                </span>
+              )}
+            </div>
             <input
+              type="tel"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={10}
               name="whatsappNumber"
               value={whatsappNumber}
-              onChange={(e) => setWhatsappNumber(e.target.value)}
+              onChange={(e) => setWhatsappNumber(e.target.value.replace(/\D/g, "").slice(0, 10))}
               placeholder="10-digit WhatsApp number (e.g. 9876543210)"
               required
               className="w-full rounded-xl border border-brand-200 bg-white px-3.5 py-2.5 text-sm transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
             />
             <p className="mt-1 text-xs text-brand-500">
-              Customers will chat and place custom orders directly to this number.
+              Numbers only, max 10 digits. Customers will chat and order directly on this number.
             </p>
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-brand-800">
-              Public / Calling Phone Number
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-brand-800">
+                Public / Calling Phone Number
+              </label>
+              {phone.length > 0 && (
+                <span className={`text-[11px] font-semibold ${phone.length === 10 ? "text-emerald-600" : "text-amber-600"}`}>
+                  {phone.length}/10 digits
+                </span>
+              )}
+            </div>
             <input
+              type="tel"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={10}
               name="phone"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
               placeholder="10-digit mobile number (e.g. 9876543210)"
               className="w-full rounded-xl border border-brand-200 bg-white px-3.5 py-2.5 text-sm transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
             />
             <p className="mt-1 text-xs text-brand-500">
-              Shown for voice calls on your storefront.
+              Numbers only, max 10 digits. Shown for voice calls on your storefront.
             </p>
           </div>
         </div>

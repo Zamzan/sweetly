@@ -21,6 +21,7 @@ function SubmitButton() {
 export default function SignupPage() {
   const [state, formAction] = useActionState(signupAction, undefined);
   const [showPassword, setShowPassword] = useState(false);
+  const [phone, setPhone] = useState("");
 
   if (state?.success) {
     return (
@@ -64,7 +65,35 @@ export default function SignupPage() {
         <Field label="Shop Name" name="shopName" placeholder="e.g. Rahman Sweets" required />
         <Field label="Owner Name" name="ownerName" placeholder="e.g. Abdul Rahman" required />
         <Field label="Email" name="email" type="email" placeholder="you@example.com" required />
-        <Field label="Phone" name="phone" type="tel" placeholder="10-digit mobile number (e.g. 9876543210)" required />
+        
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <label htmlFor="phone" className="block text-sm font-medium text-brand-900">
+              Mobile Number <span className="text-red-500">*</span>
+            </label>
+            {phone.length > 0 && (
+              <span className={`text-xs font-semibold ${phone.length === 10 ? "text-emerald-600" : "text-amber-600"}`}>
+                {phone.length}/10 digits
+              </span>
+            )}
+          </div>
+          <input
+            id="phone"
+            name="phone"
+            type="tel"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            maxLength={10}
+            required
+            value={phone}
+            onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+            placeholder="10-digit mobile number (e.g. 9876543210)"
+            className="w-full rounded-lg border border-brand-100 px-4 py-2.5 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+          />
+          <p className="mt-1 text-[11px] text-brand-500">
+            Numbers only (no country code or symbols). Max 10 digits.
+          </p>
+        </div>
         
         <div>
           <label htmlFor="password" className="mb-1 block text-sm font-medium text-brand-900">

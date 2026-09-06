@@ -215,10 +215,13 @@ export function CartDrawer({
                       />
                       <input
                         type="tel"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={10}
                         placeholder="10-digit Mobile Number *"
                         required
                         value={customerPhone}
-                        onChange={(e) => setCustomerPhone(e.target.value)}
+                        onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
                         className="w-full rounded-xl border border-brand-200 bg-brand-50/20 px-3 py-2 text-xs focus:border-brand-500 focus:outline-none"
                       />
                     </div>
