@@ -1,0 +1,181 @@
+import Link from "next/link";
+import { getPublicShopBySlug } from "@/lib/public-shop";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { StorefrontCatalog, CatalogProduct } from "./_components/storefront-catalog";
+import { StorePaused } from "../_components/store-paused";
+import { StoreOffline } from "../_components/store-offline";
+
+export default async function ShopProductsPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ shopSlug: string }>;
+  searchParams?: Promise<{ category?: string }>;
+}) {
+  const { shopSlug } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const shop = await getPublicShopBySlug(shopSlug);
+
+  if (!shop.is_published) {
+    return <StoreOffline shopName={shop.name} whatsappNumber={shop.whatsapp_number} />;
+  }
+
+  if (shop.isSubscriptionExpired) {
+    return <StorePaused shopName={shop.name} />;
+  }
+
+  const supabase = await createServerSupabaseClient();
+  const selectedCategory = resolvedSearchParams?.category;
+
+  const theme = (shop.theme && typeof shop.theme === "object" ? shop.theme : {}) as Record<
+    string,
+    any
+  >;
+  const customOrderEnabled = theme.custom_order_enabled !== false;
+  const customOrderButtonText = theme.custom_order_button_text || "Custom Orders";
+
+  let rawProducts: any[] | null = null;
+  const prodRes = await supabase
+    .from("products")
+    .select(`
+      id,
+      name,
+      slug,
+      price,
+      description,
+      category_id,
+      section_id,
+      variants,
+      product_images (
+        id,
+        storage_path
+      )
+    `)
+    .eq("shop_id", shop.id)
+    .eq("available", true)
+    .order("created_at", { ascending: false })
+    .limit(100);
+
+  if (prodRes.error && (prodRes.error.message?.includes("column") || prodRes.error.message?.includes("schema cache"))) {
+    const fallbackRes = await supabase
+      .from("products")
+      .select(`
+        id,
+        name,
+        slug,
+        price,
+        description,
+        category_id,
+        product_images (
+          id,
+          storage_path
+        )
+      `)
+      .eq("shop_id", shop.id)
+      .eq("available", true)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    rawProducts = fallbackRes.data || [];
+  } else {
+    rawProducts = prodRes.data || [];
+  }
+
+  const [
+    { data: categories },
+    sectionsRes,
+  ] = await Promise.all([
+    supabase
+      .from("product_categories")
+      .select("id, name, slug")
+      .eq("shop_id", shop.id)
+      .order("sort_order", { ascending: true }),
+    supabase
+      .from("product_sections")
+      .select("id, name, slug")
+      .eq("shop_id", shop.id)
+      .order("sort_order", { ascending: true }),
+  ]);
+
+  const sections = sectionsRes?.data || [];
+
+  const categoryMap = new Map((categories ?? []).map((c) => [c.id, c.name]));
+  const sectionMap = new Map((sections ?? []).map((s) => [s.id, s.name]));
+
+  const products: CatalogProduct[] = (rawProducts ?? []).map((p: any) => {
+    const variants = Array.isArray(p.variants) ? p.variants : [];
+    const sizes = Array.isArray(p.sizes) && p.sizes.length > 0
+      ? p.sizes
+      : Array.from(new Set(variants.map((v: any) => v.size).filter(Boolean)));
+    const colors = Array.isArray(p.colors) && p.colors.length > 0
+      ? p.colors
+      : Array.from(new Set(variants.map((v: any) => v.color).filter(Boolean)));
+    const productCategories = Array.isArray(p.categories) ? p.categories : [];
+
+    return {
+      id: p.id,
+      name: p.name,
+      slug: p.slug,
+      price: Number(p.price),
+      description: p.description,
+      category_id: p.category_id,
+      category_name: p.category_id ? categoryMap.get(p.category_id) ?? null : null,
+      section_id: p.section_id,
+      section_name: p.section_id ? sectionMap.get(p.section_id) ?? null : null,
+      has_variants: p.has_variants,
+      variants,
+      sizes,
+      colors,
+      categories: productCategories,
+      category_ids: p.category_ids ?? [],
+      section_ids: p.section_ids ?? [],
+      product_images: p.product_images ?? [],
+    };
+  });
+
+  return (
+    <main className="min-h-screen bg-cream/30 pb-16">
+      {/* Header Bar */}
+      <div className="border-b border-brand-100 bg-white py-6">
+        <div className="mx-auto max-w-5xl px-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <Link
+                href={`/${shop.slug}`}
+                className="text-xs font-semibold text-brand-600 hover:text-brand-800"
+              >
+                ← Back to {shop.name}
+              </Link>
+              <h1 className="mt-1 text-3xl font-bold tracking-tight text-brand-950">
+                Products &amp; Treats
+              </h1>
+              <p className="mt-0.5 text-xs text-brand-600">
+                Browse our fresh collection, select your preferred sizes/colors, and order directly
+              </p>
+            </div>
+
+            {customOrderEnabled && (
+              <Link
+                href={`/${shop.slug}/custom-order`}
+                className="inline-flex items-center gap-1.5 self-start rounded-xl border border-brand-200 bg-brand-50/60 px-4 py-2 text-xs font-semibold text-brand-800 transition hover:bg-brand-100"
+              >
+                ✨ {customOrderButtonText}
+              </Link>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Interactive Catalog with Search, Filters & Grid */}
+      <div className="mx-auto max-w-5xl px-6 pt-8">
+        <StorefrontCatalog
+          shopSlug={shop.slug}
+          shopName={shop.name}
+          products={products}
+          categories={categories ?? []}
+          sections={sections ?? []}
+          initialCategory={selectedCategory}
+        />
+      </div>
+    </main>
+  );
+}
