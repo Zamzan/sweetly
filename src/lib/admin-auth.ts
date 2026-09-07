@@ -198,3 +198,54 @@ export async function assertSuperAdminWithMFA(): Promise<{
 
   return { user, profile };
 }
+
+/**
+ * Non-throwing check for Server Actions. Returns `{ user, profile }` on success,
+ * or `{ error: string }` if unauthorized or unverified.
+ */
+export async function getSuperAdminWithMFA(): Promise<
+  | { user: { id: string; email?: string }; profile: { platform_role: string; full_name?: string } }
+  | { error: string }
+> {
+  try {
+    const supabase = await createServerSupabaseClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { error: "Admin login required. Please sign in to Sweetly Console." };
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id, platform_role, full_name")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile || profile.platform_role !== "PLATFORM_ADMIN") {
+      return { error: "Access denied. Only platform administrators can perform this action." };
+    }
+
+    const admin = createAdminClient();
+    const { data: mfaRecord } = await admin
+      .from("admin_mfa")
+      .select("mfa_enabled")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (!mfaRecord?.mfa_enabled) {
+      return { error: "Admin 2FA is required. Please complete 2FA setup first." };
+    }
+
+    const isMfaVerified = await verifyAdminElevatedSession(user.id);
+    if (!isMfaVerified) {
+      return { error: "Admin session expired. Please re-verify 2FA at /admin/verify." };
+    }
+
+    return { user, profile };
+  } catch (err: any) {
+    return { error: err?.message || "Failed to authenticate administrator." };
+  }
+}
+

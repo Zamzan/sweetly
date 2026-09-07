@@ -9,6 +9,11 @@ const nextConfig = {
   turbopack: {
     root: __dirname,
   },
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "10mb",
+    },
+  },
   images: {
     remotePatterns: [
       {

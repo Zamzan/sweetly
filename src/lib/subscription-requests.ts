@@ -189,15 +189,24 @@ export async function createSubscriptionRequest(payload: {
   }
 
   // Fallback: Store in subscription_events
-  // First find shop's subscription_id
-  const { data: sub } = await admin
+  // First find shop's subscription_id, auto-creating if missing
+  let { data: sub } = await admin
     .from("subscriptions")
     .select("id")
     .eq("shop_id", payload.shop_id)
-    .single();
+    .maybeSingle();
 
   if (!sub) {
-    return { error: "No subscription record found for this shop." };
+    const { data: createdSub } = await admin
+      .from("subscriptions")
+      .insert({ shop_id: payload.shop_id, status: "TRIALING", plan: "starter" })
+      .select("id")
+      .single();
+    sub = createdSub;
+  }
+
+  if (!sub) {
+    return { error: "Could not initialize subscription record for this shop." };
   }
 
   const { data: eventData, error: eventError } = await admin

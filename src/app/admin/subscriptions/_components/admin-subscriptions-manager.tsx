@@ -71,9 +71,13 @@ export function AdminSubscriptionsManager({
       return;
     }
     startTransition(async () => {
-      const res = await approveSubscriptionRequestAction({ requestId });
-      if (res.error) {
-        alert("Error approving request: " + res.error);
+      try {
+        const res = await approveSubscriptionRequestAction({ requestId });
+        if (res?.error) {
+          alert("Error approving request: " + res.error);
+        }
+      } catch (err: any) {
+        alert("Error approving request: " + (err?.message || "Unexpected network error"));
       }
     });
   }
@@ -81,15 +85,19 @@ export function AdminSubscriptionsManager({
   function handleRejectSubmit() {
     if (!rejectingRequestId) return;
     startTransition(async () => {
-      const res = await rejectSubscriptionRequestAction({
-        requestId: rejectingRequestId,
-        reason: rejectReason || "UTR could not be verified in bank records.",
-      });
-      if (res.error) {
-        alert("Error rejecting request: " + res.error);
-      } else {
-        setRejectingRequestId(null);
-        setRejectReason("");
+      try {
+        const res = await rejectSubscriptionRequestAction({
+          requestId: rejectingRequestId,
+          reason: rejectReason || "UTR could not be verified in bank records.",
+        });
+        if (res?.error) {
+          alert("Error rejecting request: " + res.error);
+        } else {
+          setRejectingRequestId(null);
+          setRejectReason("");
+        }
+      } catch (err: any) {
+        alert("Error rejecting request: " + (err?.message || "Unexpected network error"));
       }
     });
   }
@@ -98,21 +106,34 @@ export function AdminSubscriptionsManager({
     e.preventDefault();
     setGrantMessage(null);
 
-    startTransition(async () => {
-      const res = await grantSubscriptionAction({
-        shopId: grantShopId,
-        durationDays: parseInt(grantDuration, 10) || 30,
-        reason: grantReason,
-      });
+    const targetShopId = grantShopId || shops[0]?.id;
+    if (!targetShopId) {
+      setGrantMessage({ type: "error", text: "Please select a shop to grant free subscription." });
+      return;
+    }
 
-      if (res.error) {
-        setGrantMessage({ type: "error", text: res.error });
-      } else {
-        setGrantMessage({
-          type: "success",
-          text: `Successfully granted ${grantDuration} days of Sweetly Pro to the selected shop!`,
+    startTransition(async () => {
+      try {
+        const res = await grantSubscriptionAction({
+          shopId: targetShopId,
+          durationDays: parseInt(grantDuration, 10) || 30,
+          reason: grantReason,
         });
-        setGrantReason("");
+
+        if (res?.error) {
+          setGrantMessage({ type: "error", text: res.error });
+        } else {
+          setGrantMessage({
+            type: "success",
+            text: `Successfully granted ${grantDuration} days of Sweetly Pro to the selected shop!`,
+          });
+          setGrantReason("");
+        }
+      } catch (err: any) {
+        setGrantMessage({
+          type: "error",
+          text: err?.message || "An unexpected error occurred while granting subscription.",
+        });
       }
     });
   }

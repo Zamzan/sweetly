@@ -69,17 +69,21 @@ export function ManualPaymentForm({
     }
 
     startTransition(async () => {
-      const formData = new FormData();
-      formData.append("utr", utr.trim());
-      if (notes.trim()) formData.append("notes", notes.trim());
-      if (screenshotFile) formData.append("screenshot", screenshotFile);
+      try {
+        const formData = new FormData();
+        formData.append("utr", utr.trim());
+        if (notes.trim()) formData.append("notes", notes.trim());
+        if (screenshotFile) formData.append("screenshot", screenshotFile);
 
-      const res = await submitSubscriptionRequestAction(formData);
-      if (res.error) {
-        setError(res.error);
-      } else {
-        setSuccess(true);
-        setShowResubmit(false);
+        const res = await submitSubscriptionRequestAction(formData);
+        if (res?.error) {
+          setError(res.error);
+        } else {
+          setSuccess(true);
+          setShowResubmit(false);
+        }
+      } catch (err: any) {
+        setError(err?.message || "An unexpected error occurred while submitting payment. Please try again.");
       }
     });
   }
