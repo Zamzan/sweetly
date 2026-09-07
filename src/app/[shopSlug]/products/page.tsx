@@ -31,6 +31,7 @@ export default async function ShopProductsPage({
     string,
     any
   >;
+  const primaryColor = theme.primary_color || "#b43b67";
   const customOrderEnabled = theme.custom_order_enabled !== false;
   const customOrderButtonText = theme.custom_order_button_text || "Custom Orders";
 
@@ -45,7 +46,10 @@ export default async function ShopProductsPage({
       description,
       category_id,
       section_id,
+      has_variants,
       variants,
+      sizes,
+      colors,
       product_images (
         id,
         storage_path
@@ -55,6 +59,7 @@ export default async function ShopProductsPage({
     .eq("available", true)
     .order("created_at", { ascending: false })
     .limit(100);
+
 
   if (prodRes.error && (prodRes.error.message?.includes("column") || prodRes.error.message?.includes("schema cache"))) {
     const fallbackRes = await supabase
@@ -133,22 +138,29 @@ export default async function ShopProductsPage({
   });
 
   return (
-    <main className="min-h-screen bg-cream/30 pb-16">
+    <main className="min-h-screen pb-16 transition-colors" style={{ backgroundColor: "var(--theme-bg)", color: "var(--theme-text-primary)" }}>
       {/* Header Bar */}
-      <div className="border-b border-brand-100 bg-white py-6">
+      <div
+        className="border-b py-6 transition-colors"
+        style={{
+          backgroundColor: "var(--theme-card-bg)",
+          borderColor: "var(--theme-card-border)",
+        }}
+      >
         <div className="mx-auto max-w-5xl px-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <Link
                 href={`/${shop.slug}`}
-                className="text-xs font-semibold text-brand-600 hover:text-brand-800"
+                className="text-xs font-semibold hover:opacity-80 transition"
+                style={{ color: primaryColor }}
               >
                 ← Back to {shop.name}
               </Link>
-              <h1 className="mt-1 text-3xl font-bold tracking-tight text-brand-950">
+              <h1 className="mt-1 text-3xl font-bold tracking-tight" style={{ color: "var(--theme-text-primary)" }}>
                 Products &amp; Treats
               </h1>
-              <p className="mt-0.5 text-xs text-brand-600">
+              <p className="mt-0.5 text-xs" style={{ color: "var(--theme-text-secondary)" }}>
                 Browse our fresh collection, select your preferred sizes/colors, and order directly
               </p>
             </div>
@@ -156,7 +168,12 @@ export default async function ShopProductsPage({
             {customOrderEnabled && (
               <Link
                 href={`/${shop.slug}/custom-order`}
-                className="inline-flex items-center gap-1.5 self-start rounded-xl border border-brand-200 bg-brand-50/60 px-4 py-2 text-xs font-semibold text-brand-800 transition hover:bg-brand-100"
+                className="inline-flex items-center gap-1.5 self-start rounded-xl border px-4 py-2 text-xs font-semibold transition hover:opacity-90"
+                style={{
+                  backgroundColor: "var(--theme-bg)",
+                  borderColor: "var(--theme-card-border)",
+                  color: "var(--theme-text-primary)",
+                }}
               >
                 ✨ {customOrderButtonText}
               </Link>
@@ -164,6 +181,7 @@ export default async function ShopProductsPage({
           </div>
         </div>
       </div>
+
 
       {/* Interactive Catalog with Search, Filters & Grid */}
       <div className="mx-auto max-w-5xl px-6 pt-8">

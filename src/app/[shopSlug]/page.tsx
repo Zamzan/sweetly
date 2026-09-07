@@ -29,6 +29,10 @@ export default async function ShopHomePage({ params }: { params: Promise<{ shopS
       name,
       slug,
       price,
+      has_variants,
+      variants,
+      sizes,
+      colors,
       product_images (
         id,
         storage_path
@@ -38,6 +42,7 @@ export default async function ShopHomePage({ params }: { params: Promise<{ shopS
     .eq("available", true)
     .eq("featured", true)
     .limit(6);
+
 
   const theme = (shop.theme && typeof shop.theme === "object" ? shop.theme : {}) as Record<
     string,
@@ -68,7 +73,7 @@ export default async function ShopHomePage({ params }: { params: Promise<{ shopS
       : "w-full";
 
   return (
-    <main className="min-h-screen bg-cream/30 pb-16">
+    <main className="min-h-screen pb-16 transition-colors" style={{ backgroundColor: "var(--theme-bg)", color: "var(--theme-text-primary)" }}>
       {/* Hero / Cover Banner */}
       <div className={`relative h-48 sm:h-64 md:h-80 overflow-hidden shadow-sm ${bannerRounding}`} style={{ backgroundColor: primaryColor }}>
         {shop.cover_image_url ? (
@@ -94,9 +99,15 @@ export default async function ShopHomePage({ params }: { params: Promise<{ shopS
 
       {/* Shop Header Profile */}
       <div className="mx-auto max-w-5xl px-6">
-        <div className="relative -mt-16 sm:-mt-20 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 pb-6 border-b border-brand-100">
+        <div
+          className="relative -mt-16 sm:-mt-20 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 pb-6 border-b"
+          style={{ borderColor: "var(--theme-card-border)" }}
+        >
           <div className="flex items-end gap-4">
-            <div className="relative h-28 w-28 sm:h-36 sm:w-36 flex-shrink-0 overflow-hidden rounded-3xl border-4 border-white bg-white shadow-lg">
+            <div
+              className="relative h-28 w-28 sm:h-36 sm:w-36 flex-shrink-0 overflow-hidden rounded-3xl border-4 shadow-lg"
+              style={{ backgroundColor: "var(--theme-card-bg)", borderColor: "var(--theme-card-border)" }}
+            >
               {shop.logo_url ? (
                 <Image
                   src={shop.logo_url}
@@ -115,11 +126,11 @@ export default async function ShopHomePage({ params }: { params: Promise<{ shopS
             </div>
 
             <div className="pb-2">
-              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-brand-950">
+              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight" style={{ color: "var(--theme-text-primary)" }}>
                 {shop.name}
               </h1>
               {shop.city && (
-                <p className="text-sm font-medium text-brand-600">
+                <p className="text-sm font-medium" style={{ color: "var(--theme-text-secondary)" }}>
                   {shop.city}{shop.state ? `, ${shop.state}` : ""}
                 </p>
               )}
@@ -137,7 +148,12 @@ export default async function ShopHomePage({ params }: { params: Promise<{ shopS
             {customOrderEnabled && (
               <Link
                 href={`/${shop.slug}/custom-order`}
-                className="rounded-xl border border-brand-300 bg-white px-5 py-2.5 text-xs font-semibold text-brand-800 shadow-sm transition hover:bg-brand-50 active:scale-95"
+                className="rounded-xl border px-5 py-2.5 text-xs font-semibold shadow-sm transition hover:opacity-90 active:scale-95"
+                style={{
+                  backgroundColor: "var(--theme-card-bg)",
+                  borderColor: "var(--theme-card-border)",
+                  color: "var(--theme-text-primary)",
+                }}
               >
                 {customOrderButtonText}
               </Link>
@@ -148,7 +164,7 @@ export default async function ShopHomePage({ params }: { params: Promise<{ shopS
         {/* About the shop */}
         {shop.description && (
           <div className="py-6">
-            <p className="max-w-2xl text-base leading-relaxed text-brand-800 whitespace-pre-line">
+            <p className="max-w-2xl text-base leading-relaxed whitespace-pre-line" style={{ color: "var(--theme-text-secondary)" }}>
               {shop.description}
             </p>
           </div>
@@ -159,14 +175,15 @@ export default async function ShopHomePage({ params }: { params: Promise<{ shopS
           <section className="py-8">
             <div className="mb-6 flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-bold tracking-tight text-brand-900">
+                <h2 className="text-2xl font-bold tracking-tight" style={{ color: "var(--theme-text-primary)" }}>
                   Featured Specialties
                 </h2>
-                <p className="text-xs text-brand-600">Handcrafted favorites available to order</p>
+                <p className="text-xs" style={{ color: "var(--theme-text-secondary)" }}>Handcrafted favorites available to order</p>
               </div>
               <Link
                 href={`/${shop.slug}/products`}
-                className="text-xs font-semibold text-brand-600 hover:text-brand-800"
+                className="text-xs font-semibold hover:opacity-80"
+                style={{ color: primaryColor }}
               >
                 View all items →
               </Link>
@@ -178,11 +195,16 @@ export default async function ShopHomePage({ params }: { params: Promise<{ shopS
                 return (
                   <div
                     key={p.id}
-                    className="group flex flex-col overflow-hidden rounded-2xl border border-brand-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                    className="group flex flex-col overflow-hidden rounded-2xl border shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                    style={{
+                      backgroundColor: "var(--theme-card-bg)",
+                      borderColor: "var(--theme-card-border)",
+                    }}
                   >
                     <Link
                       href={`/${shop.slug}/products/${p.slug}`}
-                      className="relative h-48 w-full overflow-hidden bg-brand-50"
+                      className="relative h-48 w-full overflow-hidden"
+                      style={{ backgroundColor: "var(--theme-bg)" }}
                     >
                       {imgUrl ? (
                         <Image
@@ -192,7 +214,7 @@ export default async function ShopHomePage({ params }: { params: Promise<{ shopS
                           className="object-cover transition duration-300 group-hover:scale-105"
                         />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center font-display text-sm text-brand-400">
+                        <div className="flex h-full w-full items-center justify-center font-display text-sm opacity-40">
                           {p.name}
                         </div>
                       )}
@@ -202,19 +224,78 @@ export default async function ShopHomePage({ params }: { params: Promise<{ shopS
                       <div>
                         <Link
                           href={`/${shop.slug}/products/${p.slug}`}
-                          className="font-semibold text-brand-900 hover:text-brand-600"
+                          className="font-semibold hover:opacity-80 block"
+                          style={{ color: "var(--theme-text-primary)" }}
                         >
                           {p.name}
                         </Link>
-                        <p className="mt-1 text-sm font-bold text-brand-800">
-                          ₹{Number(p.price).toLocaleString("en-IN")}
+
+                        {/* Variant sizes & colors preview */}
+                        {(() => {
+                          const vList = Array.isArray(p.variants) ? p.variants : [];
+                          const szList: string[] = Array.isArray(p.sizes) && p.sizes.length > 0
+                            ? p.sizes
+                            : Array.from(new Set(vList.map((v: any) => v.size).filter(Boolean)));
+                          const colList: string[] = Array.isArray(p.colors) && p.colors.length > 0
+                            ? p.colors
+                            : Array.from(new Set(vList.map((v: any) => v.color).filter(Boolean)));
+
+                          return (
+                            <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                              {szList.slice(0, 3).map((sz) => (
+                                <span
+                                  key={sz}
+                                  className="rounded border px-1.5 py-0.5 text-[10px] font-medium"
+                                  style={{
+                                    backgroundColor: "var(--theme-bg)",
+                                    borderColor: "var(--theme-card-border)",
+                                    color: "var(--theme-text-primary)",
+                                  }}
+                                >
+                                  {sz}
+                                </span>
+                              ))}
+                              {colList.slice(0, 2).map((col) => (
+                                <span
+                                  key={col}
+                                  className="rounded border px-1.5 py-0.5 text-[10px] font-medium"
+                                  style={{
+                                    backgroundColor: "var(--theme-bg)",
+                                    borderColor: primaryColor,
+                                    color: primaryColor,
+                                  }}
+                                >
+                                  {col}
+                                </span>
+                              ))}
+                              {szList.length > 3 && (
+                                <span className="text-[10px] opacity-60">+{szList.length - 3}</span>
+                              )}
+                            </div>
+                          );
+                        })()}
+
+                        <p className="mt-2 text-sm font-bold" style={{ color: primaryColor }}>
+                          {(() => {
+                            const vList = Array.isArray(p.variants) ? p.variants : [];
+                            const prices = vList.map((v: any) => Number(v.price)).filter((n: number) => n > 0);
+                            if (prices.length > 1) {
+                              const minP = Math.min(...prices);
+                              return `From ₹${minP.toLocaleString("en-IN")}`;
+                            }
+                            return `₹${Number(p.price).toLocaleString("en-IN")}`;
+                          })()}
                         </p>
                       </div>
 
-                      <div className="mt-4 flex items-center justify-between gap-2 border-t border-brand-50 pt-3">
+                      <div
+                        className="mt-4 flex items-center justify-between gap-2 border-t pt-3"
+                        style={{ borderColor: "var(--theme-card-border)" }}
+                      >
                         <Link
                           href={`/${shop.slug}/products/${p.slug}`}
-                          className="text-xs font-medium text-brand-500 hover:text-brand-800"
+                          className="text-xs font-medium hover:opacity-80"
+                          style={{ color: "var(--theme-text-secondary)" }}
                         >
                           Details
                         </Link>
@@ -238,6 +319,7 @@ export default async function ShopHomePage({ params }: { params: Promise<{ shopS
         )}
 
         {/* Custom Order Callout Banner (Owner Controlled) */}
+
         {customOrderEnabled && (
           <section
             className="my-8 rounded-3xl border p-8 text-white shadow-md"

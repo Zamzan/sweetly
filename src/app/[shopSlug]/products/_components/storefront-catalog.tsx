@@ -155,11 +155,17 @@ export function StorefrontCatalog({
   return (
     <div className="space-y-6">
       {/* Search Bar & Sort Header */}
-      <div className="rounded-2xl border border-brand-100 bg-white p-4 shadow-sm sm:p-5">
+      <div
+        className="rounded-2xl border p-4 shadow-sm sm:p-5 transition-colors"
+        style={{
+          backgroundColor: "var(--theme-card-bg)",
+          borderColor: "var(--theme-card-border)",
+        }}
+      >
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           {/* Search Box */}
           <div className="relative flex-1">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-brand-400">
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm opacity-50">
               🔍
             </span>
             <input
@@ -167,13 +173,18 @@ export function StorefrontCatalog({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search sweets, cakes, fancy bags, gift boxes, 500g, 1kg..."
-              className="w-full rounded-xl border border-brand-200 bg-brand-50/20 py-2.5 pl-10 pr-10 text-sm transition focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+              className="w-full rounded-xl border py-2.5 pl-10 pr-10 text-sm transition focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+              style={{
+                backgroundColor: "var(--theme-bg)",
+                borderColor: "var(--theme-card-border)",
+                color: "var(--theme-text-primary)",
+              }}
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-xs text-brand-400 hover:text-brand-700"
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-xs opacity-50 hover:opacity-100"
               >
                 ✕
               </button>
@@ -182,11 +193,16 @@ export function StorefrontCatalog({
 
           {/* Sort Dropdown */}
           <div className="flex items-center gap-2 self-end sm:self-center">
-            <span className="text-xs font-semibold text-brand-600">Sort by:</span>
+            <span className="text-xs font-semibold" style={{ color: "var(--theme-text-secondary)" }}>Sort by:</span>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="rounded-xl border border-brand-200 bg-white px-3 py-2 text-xs font-medium text-brand-900 transition focus:border-brand-500 focus:outline-none"
+              className="rounded-xl border px-3 py-2 text-xs font-medium transition focus:outline-none"
+              style={{
+                backgroundColor: "var(--theme-bg)",
+                borderColor: "var(--theme-card-border)",
+                color: "var(--theme-text-primary)",
+              }}
             >
               <option value="featured">Featured / Recommended</option>
               <option value="price-asc">Price: Low to High</option>
@@ -195,6 +211,7 @@ export function StorefrontCatalog({
             </select>
           </div>
         </div>
+
 
         {/* Category & Occasion Pills */}
         {allCategoryOptions.length > 0 && (
@@ -354,13 +371,18 @@ export function StorefrontCatalog({
             return (
               <div
                 key={product.id}
-                className="group flex flex-col justify-between overflow-hidden rounded-3xl border border-brand-100 bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-md"
+                className="group flex flex-col justify-between overflow-hidden rounded-3xl border shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-md"
+                style={{
+                  backgroundColor: "var(--theme-card-bg)",
+                  borderColor: "var(--theme-card-border)",
+                }}
               >
                 <div>
                   {/* Photo Container */}
                   <Link
                     href={`/${shopSlug}/products/${product.slug}`}
-                    className="relative block h-56 w-full overflow-hidden bg-brand-50"
+                    className="relative block h-56 w-full overflow-hidden"
+                    style={{ backgroundColor: "var(--theme-bg)" }}
                   >
                     {imageUrl ? (
                       <Image
@@ -371,7 +393,7 @@ export function StorefrontCatalog({
                         className="object-cover transition duration-300 group-hover:scale-105"
                       />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center font-display text-3xl text-brand-200">
+                      <div className="flex h-full w-full items-center justify-center font-display text-3xl opacity-30">
                         🛍️
                       </div>
                     )}
@@ -401,25 +423,55 @@ export function StorefrontCatalog({
 
                     <Link
                       href={`/${shopSlug}/products/${product.slug}`}
-                      className="mt-1 block font-bold text-brand-950 transition hover:text-brand-600"
+                      className="mt-1 block font-bold transition hover:opacity-80"
+                      style={{ color: "var(--theme-text-primary)" }}
                     >
                       {product.name}
                     </Link>
 
-                    {/* Sizes chips */}
-                    {product.sizes && product.sizes.length > 0 && (
-                      <div className="mt-2 flex flex-wrap items-center gap-1">
-                        <span className="text-[10px] text-brand-400">Sizes:</span>
-                        {product.sizes.map((sz) => (
-                          <span
-                            key={sz}
-                            className="rounded bg-brand-50 px-1.5 py-0.5 text-[10px] font-medium text-brand-700"
-                          >
-                            {sz}
-                          </span>
-                        ))}
-                      </div>
-                    )}
+
+                    {/* Sizes and Colors preview */}
+                    {(() => {
+                      const vList = Array.isArray(product.variants) ? product.variants : [];
+                      const szList: string[] = Array.isArray(product.sizes) && product.sizes.length > 0
+                        ? product.sizes
+                        : Array.from(new Set(vList.map((v: any) => v.size).filter(Boolean)));
+                      const colList: string[] = Array.isArray(product.colors) && product.colors.length > 0
+                        ? product.colors
+                        : Array.from(new Set(vList.map((v: any) => v.color).filter(Boolean)));
+
+                      return (
+                        <div className="mt-2 space-y-1.5">
+                          {szList.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-1">
+                              <span className="text-[10px] font-semibold text-brand-500 uppercase tracking-wider">Sizes:</span>
+                              {szList.map((sz) => (
+                                <span
+                                  key={sz}
+                                  className="rounded-md bg-brand-50 border border-brand-100/80 px-1.5 py-0.5 text-[10px] font-medium text-brand-700"
+                                >
+                                  {sz}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          {colList.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-1">
+                              <span className="text-[10px] font-semibold text-amber-600 uppercase tracking-wider">Colors:</span>
+                              {colList.map((c) => (
+                                <span
+                                  key={c}
+                                  className="rounded-md bg-amber-50/80 border border-amber-200/60 px-1.5 py-0.5 text-[10px] font-medium text-amber-800"
+                                >
+                                  {c}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {product.description && (
                       <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-brand-600">
@@ -432,9 +484,23 @@ export function StorefrontCatalog({
                 {/* Footer / Price & Add to Bag */}
                 <div className="flex items-center justify-between border-t border-brand-50 p-5 pt-3">
                   <div>
-                    <span className="text-xs text-brand-500">Price</span>
+                    <span className="text-xs text-brand-500">
+                      {(() => {
+                        const vList = Array.isArray(product.variants) ? product.variants : [];
+                        const prices = vList.map((v: any) => Number(v.price)).filter((n: number) => n > 0);
+                        return prices.length > 1 ? "Starting at" : "Price";
+                      })()}
+                    </span>
                     <p className="text-lg font-extrabold text-brand-950 font-display">
-                      ₹{Number(product.price).toLocaleString("en-IN")}
+                      {(() => {
+                        const vList = Array.isArray(product.variants) ? product.variants : [];
+                        const prices = vList.map((v: any) => Number(v.price)).filter((n: number) => n > 0);
+                        if (prices.length > 1) {
+                          const minP = Math.min(...prices);
+                          return `₹${minP.toLocaleString("en-IN")}`;
+                        }
+                        return `₹${Number(product.price).toLocaleString("en-IN")}`;
+                      })()}
                     </p>
                   </div>
 
@@ -451,11 +517,12 @@ export function StorefrontCatalog({
                       href={`/${shopSlug}/products/${product.slug}`}
                       className="rounded-xl border border-brand-200 px-3 py-2 text-xs font-semibold text-brand-700 transition hover:bg-brand-50"
                     >
-                      View
+                      {((product.variants && product.variants.length > 0) || (product.sizes && product.sizes.length > 0)) ? "Options" : "View"}
                     </Link>
                   </div>
                 </div>
               </div>
+
             );
           })}
         </div>

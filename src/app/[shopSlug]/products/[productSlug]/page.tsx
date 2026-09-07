@@ -22,7 +22,10 @@ export default async function ProductDetailPage({
       name,
       description,
       price,
+      has_variants,
       variants,
+      sizes,
+      colors,
       product_images (
         id,
         storage_path
@@ -42,6 +45,7 @@ export default async function ProductDetailPage({
         name,
         description,
         price,
+        variants,
         product_images (
           id,
           storage_path
@@ -57,6 +61,7 @@ export default async function ProductDetailPage({
   }
 
   if (!product) notFound();
+
 
   const rawProduct = product as any;
   const variants = Array.isArray(rawProduct.variants) ? rawProduct.variants : [];
@@ -90,7 +95,12 @@ export default async function ProductDetailPage({
             name: product.name,
             description: product.description,
             price: Number(product.price),
-            has_variants: product.has_variants,
+            has_variants: Boolean(
+              product.has_variants ||
+              variants.length > 0 ||
+              derivedSizes.length > 0 ||
+              derivedColors.length > 0
+            ),
             variants,
             sizes: derivedSizes,
             colors: derivedColors,
@@ -98,6 +108,7 @@ export default async function ProductDetailPage({
           }}
         />
       </div>
+
     </main>
   );
 }

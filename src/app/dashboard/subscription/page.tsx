@@ -1,6 +1,7 @@
 import { getCurrentShopOrRedirect } from "@/lib/current-shop";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { UpgradePlans } from "./_components/upgrade-plans";
+import { getLatestRequestForShop } from "@/lib/subscription-requests";
+import { ManualPaymentForm } from "./_components/manual-payment-form";
 
 export default async function SubscriptionPage() {
   const { shop, role } = await getCurrentShopOrRedirect();
@@ -11,6 +12,8 @@ export default async function SubscriptionPage() {
     .select("plan, status, trial_ends_at, current_period_end")
     .eq("shop_id", shop.id)
     .single();
+
+  const latestRequest = await getLatestRequestForShop(shop.id);
 
   const now = new Date();
   const trialEnds = sub?.trial_ends_at ? new Date(sub.trial_ends_at) : null;
@@ -31,12 +34,14 @@ export default async function SubscriptionPage() {
       ? Math.max(0, Math.ceil((trialEnds.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
       : 0;
 
+  const upiId = process.env.SWEETLY_PAYMENT_UPI || "sweetly@upi";
+
   return (
     <div className="max-w-xl space-y-6">
       <div>
         <h1 className="font-display text-2xl font-bold text-brand-900">Subscription &amp; Billing</h1>
         <p className="text-sm text-brand-600">
-          Manage your Sweetly store subscription and view billing status.
+          Manage your Sweetly store subscription, UPI payments, and billing status.
         </p>
       </div>
 
@@ -48,10 +53,10 @@ export default async function SubscriptionPage() {
             <span>100% Free Trial Active ({daysRemaining} Days Left to Test)</span>
           </div>
           <p className="mt-2 text-xs text-emerald-800 leading-relaxed">
-            You are currently testing Sweetly on the 100% Free Trial. <strong>No credit card or payment details are required right now.</strong> You have full access to test all features until <strong>{trialEnds?.toLocaleDateString()}</strong>.
+            You are currently testing Sweetly on the 100% Free Trial. <strong>No payment details are required right now.</strong> You have full access to test all features until <strong>{trialEnds?.toLocaleDateString()}</strong>.
           </p>
           <p className="mt-1 text-xs text-emerald-700">
-            Only after your 14 days end, if you decide to keep your shop online, you will enter your payment details and pay ₹199/month.
+            Only after your 14 days end, if you decide to keep your shop online, you will transfer ₹199/month via UPI.
           </p>
         </div>
       )}
@@ -64,7 +69,7 @@ export default async function SubscriptionPage() {
             <span>14-Day Free Trial Expired</span>
           </div>
           <p className="mt-2 text-xs text-red-700 leading-relaxed">
-            Your 14-day free testing period has ended. To continue receiving customer orders and keep your public storefront active, please enter your payment details and activate Sweetly Starter for <strong>₹199/month</strong>.
+            Your 14-day free testing period has ended. To continue receiving customer orders and keep your public storefront active, please transfer <strong>₹199/month</strong> via UPI and submit your transaction details below.
           </p>
         </div>
       )}
@@ -74,7 +79,7 @@ export default async function SubscriptionPage() {
         <div className="flex items-center justify-between border-b border-brand-100 pb-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-brand-500">Plan</p>
-            <p className="text-xl font-bold font-display text-brand-900">Sweetly Starter</p>
+            <p className="text-xl font-bold font-display text-brand-900">Sweetly Pro</p>
           </div>
           {isSubscriptionActive ? (
             <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 border border-emerald-200">
@@ -108,22 +113,33 @@ export default async function SubscriptionPage() {
           </div>
 
           <div>
-            <p className="text-brand-500 font-medium">Payment Details Status</p>
+            <p className="text-brand-500 font-medium">Subscription Period End</p>
             <p className="font-semibold text-brand-900 mt-0.5">
-              {isSubscriptionActive
-                ? "Active · Card on file"
+              {sub?.current_period_end
+                ? new Date(sub.current_period_end).toLocaleDateString()
                 : isTrialActive
-                ? "Not required during 14-day trial"
-                : "Required now to continue (₹199/mo)"}
+                ? "Active under free trial"
+                : "Awaiting UPI payment activation"}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Upgrade / Checkout Plan Box */}
+      {/* Manual UPI Payment / Upgrade Box */}
       {role === "OWNER" && (
-        <UpgradePlans
-          currentPlan="starter"
+        <ManualPaymentForm
+          upiId={upiId}
+          pendingRequest={
+            latestRequest
+              ? {
+                  id: latestRequest.id,
+                  utr: latestRequest.utr,
+                  status: latestRequest.status,
+                  created_at: latestRequest.created_at,
+                  admin_notes: latestRequest.admin_notes,
+                }
+              : null
+          }
           isSubscriptionActive={Boolean(isSubscriptionActive)}
           isTrialActive={Boolean(isTrialActive)}
           daysRemaining={daysRemaining}
@@ -132,7 +148,7 @@ export default async function SubscriptionPage() {
       )}
 
       <p className="text-xs text-brand-400">
-        Payments are processed securely via Razorpay. Only after your 14-day free trial will you be asked to enter payment details at ₹199/month. You can cancel anytime.
+        Subscriptions are processed via manual UPI transfer. Every transaction is verified by our team. For urgent activation inquiries, contact Sweetly support.
       </p>
     </div>
   );

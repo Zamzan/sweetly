@@ -477,41 +477,98 @@ export function SettingsForm({ shop }: { shop: ShopData }) {
           </div>
         </div>
 
-        {/* Theme Style */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-          {[
-            {
-              id: "modern",
-              title: "Modern Bakery",
-              desc: "Fresh, playful, and appetizing for cakes and sweets.",
-            },
-            {
-              id: "boutique",
-              title: "Boutique & Fancy Bags",
-              desc: "Chic and premium styling for fancy bags, gifts, and accessories.",
-            },
-            {
-              id: "festive",
-              title: "Festive & Traditional",
-              desc: "Warm and celebratory for mithai, boxes, and occasions.",
-            },
-          ].map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setThemeStyle(t.id)}
-              className={`rounded-xl border p-3.5 text-left transition ${
-                themeStyle === t.id
-                  ? "border-brand-900 bg-brand-50/70 shadow-sm"
-                  : "border-brand-200 hover:bg-brand-50/30"
-              }`}
-            >
-              <p className="text-xs font-bold text-brand-900">{t.title}</p>
-              <p className="mt-1 text-[11px] leading-relaxed text-brand-600">{t.desc}</p>
-            </button>
-          ))}
+        {/* Full Storefront Website Themes */}
+        <div>
+          <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-brand-700">
+            Full Storefront Website Theme
+          </label>
+          <p className="mb-3 text-xs text-brand-500">
+            Transform your entire website appearance — background, headers, cards, and accent colors.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {[
+              {
+                id: "midnight-black",
+                title: "Midnight Black & Gold",
+                desc: "Pitch-black background, obsidian cards, and luxury gold accents.",
+                primary: "#eab308",
+                previewBg: "#09090b",
+                previewCard: "#18181b",
+                previewText: "#fafafa",
+              },
+              {
+                id: "luxury-gold",
+                title: "Royal Gold & Amber",
+                desc: "Warm champagne gold background with rich amber and bronze styling.",
+                primary: "#ca8a04",
+                previewBg: "#fefce8",
+                previewCard: "#ffffff",
+                previewText: "#422006",
+              },
+              {
+                id: "rose-boutique",
+                title: "Rose Bakery & Boutique",
+                desc: "Soft blush pastel background with elegant ruby and crimson accents.",
+                primary: "#e11d48",
+                previewBg: "#fff1f2",
+                previewCard: "#ffffff",
+                previewText: "#4c0519",
+              },
+              {
+                id: "emerald-artisan",
+                title: "Emerald Artisan",
+                desc: "Fresh artisan mint and deep forest green styling for premium organic items.",
+                primary: "#059669",
+                previewBg: "#f0fdf4",
+                previewCard: "#ffffff",
+                previewText: "#052e16",
+              },
+              {
+                id: "classic-cream",
+                title: "Classic Sweetly (Cream)",
+                desc: "Warm bakery cream background with vibrant sweet pink branding.",
+                primary: "#ec4899",
+                previewBg: "#fdfbf7",
+                previewCard: "#ffffff",
+                previewText: "#2a1711",
+              },
+            ].map((t) => {
+              const isSelected = themeStyle === t.id || (t.id === "classic-cream" && (themeStyle === "modern" || !themeStyle));
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => {
+                    setThemeStyle(t.id);
+                    setPrimaryColor(t.primary);
+                  }}
+                  className={`rounded-2xl border p-4 text-left transition ${
+                    isSelected
+                      ? "border-brand-900 bg-brand-50/70 shadow-md ring-2 ring-brand-800/10"
+                      : "border-brand-200 hover:bg-brand-50/30"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-bold text-brand-900">{t.title}</p>
+                    <div className="flex items-center gap-1">
+                      <span
+                        className="h-3.5 w-3.5 rounded-full border shadow-inner"
+                        style={{ backgroundColor: t.previewBg }}
+                      />
+                      <span
+                        className="h-3.5 w-3.5 rounded-full border shadow-inner"
+                        style={{ backgroundColor: t.primary }}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-brand-600">{t.desc}</p>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
+
 
       {/* Custom Orders & Banner Copy Settings */}
       <div className="rounded-2xl border border-brand-100 bg-brand-50/30 p-5 space-y-4">

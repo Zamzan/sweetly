@@ -49,12 +49,20 @@ export default async function ShopLayout({
         className={`relative min-h-screen flex flex-col justify-between theme-${themeStyle}`}
         style={
           {
+            backgroundColor: "var(--theme-bg)",
+            color: "var(--theme-text-primary)",
             "--shop-primary": primaryColor,
             "--shop-accent": accentColor,
           } as React.CSSProperties
         }
       >
-        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-brand-100/80 bg-white/95 px-6 py-3.5 backdrop-blur-md shadow-xs">
+        <header
+          className="sticky top-0 z-30 flex items-center justify-between border-b px-6 py-3.5 backdrop-blur-md shadow-xs transition-colors"
+          style={{
+            backgroundColor: "var(--theme-header-bg)",
+            borderColor: "var(--theme-header-border)",
+          }}
+        >
           <Link
             href={`/${shop.slug}`}
             className="font-display text-xl font-bold tracking-tight transition hover:opacity-90 flex items-center gap-2.5"
@@ -79,16 +87,18 @@ export default async function ShopLayout({
           </Link>
 
           <div className="flex items-center gap-4">
-            <nav className="hidden items-center gap-6 text-xs font-semibold uppercase tracking-wider text-brand-700 md:flex">
+            <nav className="hidden items-center gap-6 text-xs font-semibold uppercase tracking-wider md:flex">
               <Link
                 href={`/${shop.slug}`}
-                className="hover:text-brand-950 transition"
+                className="transition hover:opacity-75"
+                style={{ color: "var(--theme-text-primary)" }}
               >
                 Home
               </Link>
               <Link
                 href={`/${shop.slug}/products`}
-                className="hover:text-brand-950 transition"
+                className="transition hover:opacity-75"
+                style={{ color: "var(--theme-text-primary)" }}
               >
                 Products
               </Link>
@@ -117,10 +127,18 @@ export default async function ShopLayout({
           whatsappNumber={shop.whatsapp_number}
         />
 
-        <footer className="mt-16 border-t border-brand-100 bg-white px-6 py-8 text-center text-xs text-brand-500">
-          Powered by <Link href="/" className="font-semibold text-brand-700 underline">Sweetly</Link>
+        <footer
+          className="mt-16 border-t px-6 py-8 text-center text-xs transition-colors"
+          style={{
+            backgroundColor: "var(--theme-footer-bg)",
+            borderColor: "var(--theme-header-border)",
+            color: "var(--theme-footer-text)",
+          }}
+        >
+          Powered by <Link href="/" className="font-semibold underline" style={{ color: primaryColor }}>Sweetly</Link>
         </footer>
       </div>
     </CartProvider>
   );
+
 }

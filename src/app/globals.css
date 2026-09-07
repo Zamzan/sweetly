@@ -4,6 +4,15 @@
 
 :root {
   color-scheme: light;
+  --theme-bg: #fdfbf7;
+  --theme-card-bg: #ffffff;
+  --theme-card-border: #f3ebe1;
+  --theme-text-primary: #2a1711;
+  --theme-text-secondary: #7a6660;
+  --theme-header-bg: rgba(255, 255, 255, 0.95);
+  --theme-header-border: #f3ebe1;
+  --theme-footer-bg: #ffffff;
+  --theme-footer-text: #7a6660;
 }
 
 body {
@@ -19,3 +28,68 @@ h1, h2, h3, h4 {
   outline: 2px solid theme("colors.gold.500");
   outline-offset: 2px;
 }
+
+/* Storefront Full Themes */
+.theme-midnight-black,
+.theme-dark {
+  --theme-bg: #09090b;
+  --theme-card-bg: #121215;
+  --theme-card-border: #27272a;
+  --theme-text-primary: #fafafa;
+  --theme-text-secondary: #a1a1aa;
+  --theme-header-bg: rgba(12, 12, 15, 0.95);
+  --theme-header-border: #27272a;
+  --theme-footer-bg: #09090b;
+  --theme-footer-text: #71717a;
+  color-scheme: dark;
+}
+
+.theme-luxury-gold {
+  --theme-bg: #fefce8;
+  --theme-card-bg: #ffffff;
+  --theme-card-border: #fef08a;
+  --theme-text-primary: #422006;
+  --theme-text-secondary: #854d0e;
+  --theme-header-bg: rgba(254, 252, 232, 0.95);
+  --theme-header-border: #fef08a;
+  --theme-footer-bg: #fef9c3;
+  --theme-footer-text: #854d0e;
+}
+
+.theme-rose-boutique {
+  --theme-bg: #fff1f2;
+  --theme-card-bg: #ffffff;
+  --theme-card-border: #ffe4e6;
+  --theme-text-primary: #4c0519;
+  --theme-text-secondary: #9f1239;
+  --theme-header-bg: rgba(255, 241, 242, 0.95);
+  --theme-header-border: #ffe4e6;
+  --theme-footer-bg: #ffe4e6;
+  --theme-footer-text: #9f1239;
+}
+
+.theme-emerald-artisan {
+  --theme-bg: #f0fdf4;
+  --theme-card-bg: #ffffff;
+  --theme-card-border: #dcfce7;
+  --theme-text-primary: #052e16;
+  --theme-text-secondary: #166534;
+  --theme-header-bg: rgba(240, 253, 244, 0.95);
+  --theme-header-border: #dcfce7;
+  --theme-footer-bg: #dcfce7;
+  --theme-footer-text: #166534;
+}
+
+.theme-classic-cream,
+.theme-modern {
+  --theme-bg: #fdfbf7;
+  --theme-card-bg: #ffffff;
+  --theme-card-border: #f3ebe1;
+  --theme-text-primary: #2a1711;
+  --theme-text-secondary: #7a6660;
+  --theme-header-bg: rgba(255, 255, 255, 0.95);
+  --theme-header-border: #f3ebe1;
+  --theme-footer-bg: #ffffff;
+  --theme-footer-text: #7a6660;
+}
+

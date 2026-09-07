@@ -79,6 +79,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               >
                 All Shops & Revenue
               </Link>
+              <Link
+                href="/admin/subscriptions"
+                className="rounded-lg px-3 py-1.5 text-slate-300 transition hover:bg-slate-800 hover:text-white"
+              >
+                Subscriptions & UPI
+              </Link>
             </nav>
           </div>
 

@@ -42,24 +42,41 @@ export function ProductDetailView({
   const images = (product.product_images || []).map((img) => getPublicAssetUrl(img.storage_path)).filter(Boolean) as string[];
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
-  // Variant selections
-  const variants = product.variants || [];
-  const hasVariants = product.has_variants && variants.length > 0;
+  // Variant selections: combine structured variants with raw sizes/colors if needed
+  const rawVariants = product.variants || [];
+  const derivedVariants: Variant[] = rawVariants.length > 0
+    ? rawVariants
+    : (product.sizes || []).map((sz, idx) => ({
+        id: `sz-${idx}-${sz}`,
+        name: sz,
+        size: sz,
+        color: (product.colors || [])[idx] || undefined,
+        price: Number(product.price),
+        available: true,
+      }));
 
-  const [selectedVariantId, setSelectedVariantId] = useState<string>(
-    hasVariants ? variants[0]?.id || "" : ""
+  const hasVariants = Boolean(
+    product.has_variants ||
+    derivedVariants.length > 0 ||
+    (product.sizes && product.sizes.length > 0) ||
+    (product.colors && product.colors.length > 0)
   );
 
-  const selectedVariant = hasVariants
-    ? variants.find((v) => v.id === selectedVariantId) || variants[0]
-    : null;
+  const [selectedVariantId, setSelectedVariantId] = useState<string>(
+    derivedVariants[0]?.id || ""
+  );
+
+  const selectedVariant = derivedVariants.find((v) => v.id === selectedVariantId) || derivedVariants[0] || null;
 
   // Active displayed price (variant price if available, otherwise base price)
-  const currentPrice = selectedVariant ? selectedVariant.price : Number(product.price);
-  const currentSize = selectedVariant?.size;
-  const currentColor = selectedVariant?.color;
+  const currentPrice = selectedVariant && Number(selectedVariant.price) > 0
+    ? Number(selectedVariant.price)
+    : Number(product.price);
+  const currentSize = selectedVariant?.size || (product.sizes && product.sizes[0]);
+  const currentColor = selectedVariant?.color || (product.colors && product.colors[0]);
 
   const activeImageUrl = images[activeImageIndex] || null;
+
 
   return (
     <div className="grid gap-8 md:grid-cols-2">
@@ -145,8 +162,9 @@ export function ProductDetailView({
                   Select Size / Option:
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {variants.map((v) => {
+                  {derivedVariants.map((v) => {
                     const isSelected = v.id === selectedVariant?.id;
+                    const label = v.size ? v.size : v.name;
                     return (
                       <button
                         key={v.id}
@@ -158,8 +176,9 @@ export function ProductDetailView({
                             : "border-brand-200 bg-white text-brand-800 hover:bg-brand-50"
                         }`}
                       >
-                        <span>{v.size || v.name}</span>
-                        <span className="ml-1.5 opacity-80">₹{v.price}</span>
+                        <span>{label}</span>
+                        {v.color ? <span className="ml-1 text-[11px] opacity-80">({v.color})</span> : null}
+                        <span className="ml-1.5 opacity-90 font-bold">₹{v.price}</span>
                       </button>
                     );
                   })}
@@ -169,7 +188,7 @@ export function ProductDetailView({
               {/* Color Details if any */}
               {selectedVariant?.color && (
                 <div className="flex items-center gap-2 pt-1 border-t border-brand-100/60">
-                  <span className="text-xs font-medium text-brand-600">Color:</span>
+                  <span className="text-xs font-medium text-brand-600">Selected Color:</span>
                   <span className="rounded-md bg-white border border-brand-200 px-2 py-0.5 text-xs font-semibold text-brand-800">
                     {selectedVariant.color}
                   </span>
@@ -200,8 +219,10 @@ export function ProductDetailView({
           <div className="flex items-center gap-3">
             <AddToCartButton
               product={{
-                id: product.id,
-                name: hasVariants && currentSize ? `${product.name} (${currentSize})` : product.name,
+                id: selectedVariant ? `${product.id}-${selectedVariant.id}` : product.id,
+                name: hasVariants && (currentSize || currentColor)
+                  ? `${product.name} (${[currentSize, currentColor].filter(Boolean).join(" · ")})`
+                  : product.name,
                 price: currentPrice,
                 image_url: activeImageUrl,
               }}
@@ -211,13 +232,14 @@ export function ProductDetailView({
               shopSlug={shop.slug}
               shopName={shop.name}
               productName={
-                hasVariants && currentSize
-                  ? `${product.name} - ${currentSize}${currentColor ? ` [${currentColor}]` : ""}`
+                hasVariants && (currentSize || currentColor)
+                  ? `${product.name} - ${[currentSize, currentColor ? `[${currentColor}]` : ""].filter(Boolean).join(" ")}`
                   : product.name
               }
               price={currentPrice}
             />
           </div>
+
 
           <Link
             href={`/${shop.slug}/products`}
