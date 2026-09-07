@@ -34,7 +34,7 @@ export default async function SubscriptionPage() {
       ? Math.max(0, Math.ceil((trialEnds.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
       : 0;
 
-  const upiId = process.env.SWEETLY_PAYMENT_UPI || "sweetly@upi";
+  const upiId = process.env.SWEETLY_PAYMENT_UPI || "zamzanjr10@okaxis";
 
   return (
     <div className="max-w-xl space-y-6">
