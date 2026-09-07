@@ -230,7 +230,7 @@ export function ManualPaymentForm({
                 2
               </span>
               <span>
-                <strong>Only after 14 days ({trialEndsAt ? new Date(trialEndsAt).toLocaleDateString() : "after trial"}):</strong> If you want to keep your shop online, you will transfer <strong>₹199/month</strong> via UPI to activate Sweetly Pro.
+                <strong>Only after 14 days (<span suppressHydrationWarning>{trialEndsAt ? new Date(trialEndsAt).toLocaleDateString("en-IN") : "after trial"}</span>):</strong> If you want to keep your shop online, you will transfer <strong>₹199/month</strong> via UPI to activate Sweetly Pro.
               </span>
             </div>
           </div>

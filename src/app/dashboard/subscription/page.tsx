@@ -53,7 +53,7 @@ export default async function SubscriptionPage() {
             <span>100% Free Trial Active ({daysRemaining} Days Left to Test)</span>
           </div>
           <p className="mt-2 text-xs text-emerald-800 leading-relaxed">
-            You are currently testing Sweetly on the 100% Free Trial. <strong>No payment details are required right now.</strong> You have full access to test all features until <strong>{trialEnds?.toLocaleDateString()}</strong>.
+            You are currently testing Sweetly on the 100% Free Trial. <strong>No payment details are required right now.</strong> You have full access to test all features until <strong suppressHydrationWarning>{trialEnds?.toLocaleDateString("en-IN")}</strong>.
           </p>
           <p className="mt-1 text-xs text-emerald-700">
             Only after your 14 days end, if you decide to keep your shop online, you will transfer ₹199/month via UPI.
