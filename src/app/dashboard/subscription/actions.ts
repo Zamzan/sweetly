@@ -7,6 +7,7 @@ import { safeLogAudit } from "@/lib/audit";
 import { sniffImageType } from "@/lib/images";
 import { ALLOWED_IMAGE_MIME_TYPES, MAX_IMAGE_BYTES } from "@/lib/validation";
 import { getLatestRequestForShop, createSubscriptionRequest } from "@/lib/subscription-requests";
+import { notifyAdminOfPaymentSubmission } from "@/lib/notifications";
 import DOMPurify from "isomorphic-dompurify";
 
 export async function submitSubscriptionRequestAction(formData: FormData) {
@@ -117,6 +118,23 @@ export async function submitSubscriptionRequestAction(formData: FormData) {
       targetType: "subscription_request",
       targetId: result.id,
     });
+
+    // 7. Notify Platform Admin via Resend Email & Webhook
+    try {
+      await notifyAdminOfPaymentSubmission({
+        shopName: shop.name,
+        shopSlug: shop.slug,
+        merchantEmail: user.email || "N/A",
+        merchantPhone: shop.phone || shop.whatsapp_number || null,
+        utr: cleanUtr,
+        amount,
+        screenshotPath: screenshotStoragePath,
+        notes: cleanNotes,
+        requestId: result.id,
+      });
+    } catch (notifyErr) {
+      console.error("Admin payment notification error:", notifyErr);
+    }
 
     try {
       revalidatePath("/dashboard/subscription");
