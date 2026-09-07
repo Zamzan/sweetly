@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
+import QRCode from "qrcode";
 import { submitSubscriptionRequestAction } from "../actions";
 
 interface ManualPaymentFormProps {
@@ -36,6 +37,24 @@ export function ManualPaymentForm({
   const [success, setSuccess] = useState(false);
   const [showResubmit, setShowResubmit] = useState(false);
   const [showEarlyPayment, setShowEarlyPayment] = useState(false);
+  const [showQr, setShowQr] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+
+  const amount = "199.00";
+  const payeeName = "Sweetly";
+  const note = "Sweetly Pro Subscription";
+
+  const upiQuery = `pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR&tn=${encodeURIComponent(note)}`;
+  const genericUpiUri = `upi://pay?${upiQuery}`;
+  const gpayUri = `tez://upi/pay?${upiQuery}`;
+  const phonePeUri = `phonepe://pay?${upiQuery}`;
+  const paytmUri = `paytmmp://pay?${upiQuery}`;
+
+  useEffect(() => {
+    QRCode.toDataURL(genericUpiUri, { width: 220, margin: 1 })
+      .then((url) => setQrDataUrl(url))
+      .catch((err) => console.error("Error generating UPI QR code:", err));
+  }, [genericUpiUri]);
 
   const isPendingVerification = pendingRequest?.status === "pending";
   const isRejected = pendingRequest?.status === "rejected";
@@ -281,24 +300,96 @@ export function ManualPaymentForm({
               </button>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
-              <div className="bg-white p-2.5 rounded-lg border border-brand-100 font-medium text-brand-700">
-                Google Pay
-              </div>
-              <div className="bg-white p-2.5 rounded-lg border border-brand-100 font-medium text-brand-700">
-                PhonePe
-              </div>
-              <div className="bg-white p-2.5 rounded-lg border border-brand-100 font-medium text-brand-700">
-                Paytm
-              </div>
-              <div className="bg-white p-2.5 rounded-lg border border-brand-100 font-medium text-brand-700">
-                BHIM / Any UPI
+            {/* 1-Tap Mobile UPI App Launchers */}
+            <div className="space-y-2">
+              <p className="text-[11px] font-semibold text-brand-700">
+                Tap your preferred app to open and pay ₹199 directly on mobile:
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
+                {/* Google Pay */}
+                <a
+                  href={gpayUri}
+                  onClick={() => navigator.clipboard.writeText(upiId)}
+                  className="flex flex-col items-center justify-center p-3 rounded-xl border border-blue-200 bg-white hover:bg-blue-50/70 hover:border-blue-400 transition shadow-sm group active:scale-95 cursor-pointer"
+                >
+                  <div className="flex items-center gap-0.5 font-bold text-sm tracking-tight text-slate-800">
+                    <span className="text-[#4285F4]">G</span>
+                    <span className="text-[#EA4335]">P</span>
+                    <span className="text-[#FBBC05]">a</span>
+                    <span className="text-[#34A853]">y</span>
+                  </div>
+                  <span className="text-[10px] font-medium text-brand-600 mt-1 group-hover:text-blue-700">Open GPay ↗</span>
+                </a>
+
+                {/* PhonePe */}
+                <a
+                  href={phonePeUri}
+                  onClick={() => navigator.clipboard.writeText(upiId)}
+                  className="flex flex-col items-center justify-center p-3 rounded-xl border border-purple-200 bg-white hover:bg-purple-50/70 hover:border-purple-400 transition shadow-sm group active:scale-95 cursor-pointer"
+                >
+                  <div className="flex items-center gap-1 font-bold text-sm text-[#5f259f]">
+                    <span className="text-base font-black">पे</span>
+                    <span>PhonePe</span>
+                  </div>
+                  <span className="text-[10px] font-medium text-brand-600 mt-1 group-hover:text-purple-700">Open PhonePe ↗</span>
+                </a>
+
+                {/* Paytm */}
+                <a
+                  href={paytmUri}
+                  onClick={() => navigator.clipboard.writeText(upiId)}
+                  className="flex flex-col items-center justify-center p-3 rounded-xl border border-sky-200 bg-white hover:bg-sky-50/70 hover:border-sky-400 transition shadow-sm group active:scale-95 cursor-pointer"
+                >
+                  <div className="flex items-center gap-1 font-bold text-sm text-[#00b9f5]">
+                    <span className="tracking-tighter font-black">paytm</span>
+                  </div>
+                  <span className="text-[10px] font-medium text-brand-600 mt-1 group-hover:text-sky-700">Open Paytm ↗</span>
+                </a>
+
+                {/* BHIM / Any UPI */}
+                <a
+                  href={genericUpiUri}
+                  onClick={() => navigator.clipboard.writeText(upiId)}
+                  className="flex flex-col items-center justify-center p-3 rounded-xl border border-emerald-200 bg-white hover:bg-emerald-50/70 hover:border-emerald-400 transition shadow-sm group active:scale-95 cursor-pointer"
+                >
+                  <div className="flex items-center gap-1 font-bold text-sm text-emerald-800">
+                    <span className="text-sm">⚡</span>
+                    <span>Any UPI</span>
+                  </div>
+                  <span className="text-[10px] font-medium text-brand-600 mt-1 group-hover:text-emerald-700">App Chooser ↗</span>
+                </a>
               </div>
             </div>
 
-            <p className="text-[11px] text-brand-600">
-              Amount to transfer: <strong>₹199.00</strong>. Enter your store name in the payment remark if possible.
-            </p>
+            <div className="pt-2 border-t border-brand-200/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <p className="text-[11px] text-brand-600">
+                Amount to transfer: <strong className="text-brand-900">₹199.00</strong> (Sweetly Pro 1 Month).
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowQr(!showQr)}
+                className="inline-flex items-center gap-1.5 text-xs text-brand-700 hover:text-brand-900 font-semibold underline"
+              >
+                <span>📷</span>
+                <span>{showQr ? "Hide QR Code" : "Scan QR Code to Pay"}</span>
+              </button>
+            </div>
+
+            {/* Dynamic QR Code Modal / View */}
+            {showQr && qrDataUrl && (
+              <div className="mt-2 flex flex-col items-center justify-center p-4 bg-white rounded-xl border border-brand-200 shadow-sm text-center">
+                <p className="text-xs font-semibold text-brand-900 mb-2">
+                  Scan with Google Pay, PhonePe, or Paytm app on your phone:
+                </p>
+                <div className="p-2.5 rounded-xl border-2 border-brand-100 bg-white shadow-sm inline-block">
+                  <img src={qrDataUrl} alt="UPI Payment QR Code" className="h-44 w-44 mx-auto" />
+                </div>
+                <p className="text-[11px] font-mono font-bold text-brand-800 mt-2 bg-brand-50 px-2.5 py-0.5 rounded border border-brand-200 inline-block">
+                  {upiId}
+                </p>
+                <p className="text-[11px] text-emerald-700 font-bold mt-1">Pre-configured amount: ₹199.00</p>
+              </div>
+            )}
           </div>
 
           {/* Submission Form */}
