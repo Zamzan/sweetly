@@ -39,6 +39,9 @@ export function ManualPaymentForm({
   const [showEarlyPayment, setShowEarlyPayment] = useState(false);
   const [showQr, setShowQr] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [isMobileDevice, setIsMobileDevice] = useState<boolean | null>(null);
+  const [activeUpiNotice, setActiveUpiNotice] = useState<string | null>(null);
+  const [copiedAmount, setCopiedAmount] = useState(false);
 
   const amount = "199.00";
   const payeeName = "Sweetly";
@@ -46,15 +49,106 @@ export function ManualPaymentForm({
 
   const upiQuery = `pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR&tn=${encodeURIComponent(note)}`;
   const genericUpiUri = `upi://pay?${upiQuery}`;
-  const gpayUri = `tez://upi/pay?${upiQuery}`;
-  const phonePeUri = `phonepe://pay?${upiQuery}`;
-  const paytmUri = `paytmmp://pay?${upiQuery}`;
+
+  // Android Chrome Intent URIs (required for Android Chrome to open specific apps directly)
+  const gpayAndroidIntent = `intent://pay?${upiQuery}#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end`;
+  const phonePeAndroidIntent = `intent://pay?${upiQuery}#Intent;scheme=upi;package=com.phonepe.app;end`;
+  const paytmAndroidIntent = `intent://pay?${upiQuery}#Intent;scheme=upi;package=net.one97.paytm;end`;
+  const genericAndroidIntent = `intent://pay?${upiQuery}#Intent;scheme=upi;end`;
+
+  // iOS / Universal Deep Links
+  const phonePeIosUri = `phonepe://pay?${upiQuery}`;
+  const paytmIosUri = `paytmmp://pay?${upiQuery}`;
+  const gpayIosUri = `gpay://upi/pay?${upiQuery}`;
 
   useEffect(() => {
-    QRCode.toDataURL(genericUpiUri, { width: 220, margin: 1 })
+    QRCode.toDataURL(genericUpiUri, { width: 260, margin: 1 })
       .then((url) => setQrDataUrl(url))
       .catch((err) => console.error("Error generating UPI QR code:", err));
+
+    const isMobile =
+      typeof window !== "undefined" &&
+      /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    setIsMobileDevice(isMobile);
+
+    // On desktop, auto-expand QR code because desktop users pay via phone camera scan
+    if (!isMobile) {
+      setShowQr(true);
+    }
   }, [genericUpiUri]);
+
+  function handleLaunchUpi(app: "gpay" | "phonepe" | "paytm" | "any", e?: React.MouseEvent) {
+    if (e) e.preventDefault();
+
+    // 1. Always copy UPI ID to clipboard as a reliable backup
+    try {
+      navigator.clipboard.writeText(upiId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 3000);
+    } catch {}
+
+    const isAndroid = typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
+    const isIOS = typeof navigator !== "undefined" && /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const isMobile = isAndroid || isIOS || (typeof navigator !== "undefined" && /mobile/i.test(navigator.userAgent));
+
+    const appLabels: Record<string, string> = {
+      gpay: "Google Pay",
+      phonepe: "PhonePe",
+      paytm: "Paytm",
+      any: "UPI App",
+    };
+    const appName = appLabels[app] || "UPI";
+
+    if (!isMobile) {
+      // Desktop: Custom UPI protocol schemes are not supported by desktop OSes (Windows/macOS)
+      setShowQr(true);
+      setActiveUpiNotice(
+        `💻 Desktop detected: UPI ID "${upiId}" was copied to your clipboard! UPI apps cannot open natively on desktop. Scan the QR code below on your phone to transfer ₹199.`
+      );
+      setTimeout(() => {
+        document.getElementById("upi-qr-card")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 100);
+      return;
+    }
+
+    // Mobile: Launch appropriate protocol or intent
+    let targetUri = genericUpiUri;
+
+    if (isAndroid) {
+      if (app === "gpay") targetUri = gpayAndroidIntent;
+      else if (app === "phonepe") targetUri = phonePeAndroidIntent;
+      else if (app === "paytm") targetUri = paytmAndroidIntent;
+      else targetUri = genericAndroidIntent;
+    } else if (isIOS) {
+      if (app === "phonepe") targetUri = phonePeIosUri;
+      else if (app === "paytm") targetUri = paytmIosUri;
+      else if (app === "gpay") targetUri = gpayIosUri;
+      else targetUri = genericUpiUri;
+    }
+
+    setActiveUpiNotice(`🚀 Launching ${appName}... (UPI ID "${upiId}" is also copied to clipboard)`);
+
+    // Trigger URL navigation
+    try {
+      window.location.href = targetUri;
+    } catch {
+      window.location.assign(genericUpiUri);
+    }
+
+    // Fallback: If after 2 seconds user is still on this browser tab, app might not be installed
+    setTimeout(() => {
+      setShowQr(true);
+      setActiveUpiNotice(
+        `If ${appName} didn't open automatically, tap "Any UPI" to select an installed app or scan the QR code below.`
+      );
+    }, 2000);
+  }
+
+  function copyAmount() {
+    navigator.clipboard.writeText(amount);
+    setCopiedAmount(true);
+    setTimeout(() => setCopiedAmount(false), 2000);
+  }
 
   const isPendingVerification = pendingRequest?.status === "pending";
   const isRejected = pendingRequest?.status === "rejected";
@@ -309,16 +403,40 @@ export function ManualPaymentForm({
             </div>
 
             {/* 1-Tap Mobile UPI App Launchers */}
-            <div className="space-y-2">
-              <p className="text-[11px] font-semibold text-brand-700">
-                Tap your preferred app to open and pay ₹199 directly on mobile:
-              </p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold text-brand-900">
+                  Select your UPI app to pay ₹199:
+                </p>
+                {isMobileDevice !== null && (
+                  <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border bg-brand-50 border-brand-200 text-brand-700">
+                    {isMobileDevice ? "📱 Mobile Device" : "💻 Desktop / PC"}
+                  </span>
+                )}
+              </div>
+
+              {/* Active UPI Status / Alert Notice */}
+              {activeUpiNotice && (
+                <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-900 flex items-start gap-2 animate-fadeIn shadow-sm">
+                  <span className="text-base shrink-0">ℹ️</span>
+                  <div className="flex-1 leading-relaxed">{activeUpiNotice}</div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveUpiNotice(null)}
+                    className="text-blue-500 hover:text-blue-800 text-xs font-bold"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-center text-xs">
                 {/* Google Pay */}
-                <a
-                  href={gpayUri}
-                  onClick={() => navigator.clipboard.writeText(upiId)}
-                  className="flex flex-col items-center justify-center p-3 rounded-xl border border-blue-200 bg-white hover:bg-blue-50/70 hover:border-blue-400 transition shadow-sm group active:scale-95 cursor-pointer"
+                <button
+                  type="button"
+                  id="btn-upi-gpay"
+                  onClick={(e) => handleLaunchUpi("gpay", e)}
+                  className="flex flex-col items-center justify-center p-3 rounded-xl border border-blue-200/90 bg-white hover:bg-blue-50/80 hover:border-blue-400 transition-all shadow-sm group active:scale-95 cursor-pointer relative"
                 >
                   <div className="flex items-center gap-0.5 font-bold text-sm tracking-tight text-slate-800">
                     <span className="text-[#4285F4]">G</span>
@@ -326,76 +444,130 @@ export function ManualPaymentForm({
                     <span className="text-[#FBBC05]">a</span>
                     <span className="text-[#34A853]">y</span>
                   </div>
-                  <span className="text-[10px] font-medium text-brand-600 mt-1 group-hover:text-blue-700">Open GPay ↗</span>
-                </a>
+                  <span className="text-[10px] font-medium text-brand-600 mt-1.5 group-hover:text-blue-700">
+                    {isMobileDevice ? "Open GPay ↗" : "Copy & Scan QR"}
+                  </span>
+                </button>
 
                 {/* PhonePe */}
-                <a
-                  href={phonePeUri}
-                  onClick={() => navigator.clipboard.writeText(upiId)}
-                  className="flex flex-col items-center justify-center p-3 rounded-xl border border-purple-200 bg-white hover:bg-purple-50/70 hover:border-purple-400 transition shadow-sm group active:scale-95 cursor-pointer"
+                <button
+                  type="button"
+                  id="btn-upi-phonepe"
+                  onClick={(e) => handleLaunchUpi("phonepe", e)}
+                  className="flex flex-col items-center justify-center p-3 rounded-xl border border-purple-200/90 bg-white hover:bg-purple-50/80 hover:border-purple-400 transition-all shadow-sm group active:scale-95 cursor-pointer relative"
                 >
                   <div className="flex items-center gap-1 font-bold text-sm text-[#5f259f]">
                     <span className="text-base font-black">पे</span>
                     <span>PhonePe</span>
                   </div>
-                  <span className="text-[10px] font-medium text-brand-600 mt-1 group-hover:text-purple-700">Open PhonePe ↗</span>
-                </a>
+                  <span className="text-[10px] font-medium text-brand-600 mt-1.5 group-hover:text-purple-700">
+                    {isMobileDevice ? "Open PhonePe ↗" : "Copy & Scan QR"}
+                  </span>
+                </button>
 
                 {/* Paytm */}
-                <a
-                  href={paytmUri}
-                  onClick={() => navigator.clipboard.writeText(upiId)}
-                  className="flex flex-col items-center justify-center p-3 rounded-xl border border-sky-200 bg-white hover:bg-sky-50/70 hover:border-sky-400 transition shadow-sm group active:scale-95 cursor-pointer"
+                <button
+                  type="button"
+                  id="btn-upi-paytm"
+                  onClick={(e) => handleLaunchUpi("paytm", e)}
+                  className="flex flex-col items-center justify-center p-3 rounded-xl border border-sky-200/90 bg-white hover:bg-sky-50/80 hover:border-sky-400 transition-all shadow-sm group active:scale-95 cursor-pointer relative"
                 >
                   <div className="flex items-center gap-1 font-bold text-sm text-[#00b9f5]">
                     <span className="tracking-tighter font-black">paytm</span>
                   </div>
-                  <span className="text-[10px] font-medium text-brand-600 mt-1 group-hover:text-sky-700">Open Paytm ↗</span>
-                </a>
+                  <span className="text-[10px] font-medium text-brand-600 mt-1.5 group-hover:text-sky-700">
+                    {isMobileDevice ? "Open Paytm ↗" : "Copy & Scan QR"}
+                  </span>
+                </button>
 
-                {/* BHIM / Any UPI */}
-                <a
-                  href={genericUpiUri}
-                  onClick={() => navigator.clipboard.writeText(upiId)}
-                  className="flex flex-col items-center justify-center p-3 rounded-xl border border-emerald-200 bg-white hover:bg-emerald-50/70 hover:border-emerald-400 transition shadow-sm group active:scale-95 cursor-pointer"
+                {/* Any UPI / App Chooser */}
+                <button
+                  type="button"
+                  id="btn-upi-any"
+                  onClick={(e) => handleLaunchUpi("any", e)}
+                  className="flex flex-col items-center justify-center p-3 rounded-xl border border-emerald-200/90 bg-white hover:bg-emerald-50/80 hover:border-emerald-400 transition-all shadow-sm group active:scale-95 cursor-pointer relative"
                 >
                   <div className="flex items-center gap-1 font-bold text-sm text-emerald-800">
                     <span className="text-sm">⚡</span>
                     <span>Any UPI</span>
                   </div>
-                  <span className="text-[10px] font-medium text-brand-600 mt-1 group-hover:text-emerald-700">App Chooser ↗</span>
-                </a>
+                  <span className="text-[10px] font-medium text-brand-600 mt-1.5 group-hover:text-emerald-700">
+                    {isMobileDevice ? "App Chooser ↗" : "Copy & Scan QR"}
+                  </span>
+                </button>
               </div>
+
+              {/* Contextual Device Advice */}
+              {!isMobileDevice && (
+                <div className="flex items-center gap-2 p-2.5 rounded-lg bg-amber-50/80 border border-amber-200/70 text-[11px] text-amber-900">
+                  <span className="text-sm">💡</span>
+                  <span>
+                    <strong>On Computer / Laptop:</strong> Mobile UPI apps cannot open natively on desktop. Scan the QR code below using your phone&apos;s camera or Google Pay / PhonePe / Paytm scanner.
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="pt-2 border-t border-brand-200/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <p className="text-[11px] text-brand-600">
-                Amount to transfer: <strong className="text-brand-900">₹199.00</strong> (Sweetly Pro 1 Month).
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-[11px] text-brand-600">
+                  Amount: <strong className="text-brand-900">₹199.00</strong> (Sweetly Pro / mo)
+                </p>
+                <button
+                  type="button"
+                  onClick={copyAmount}
+                  className="text-[11px] font-semibold text-brand-600 hover:text-brand-900 underline"
+                >
+                  {copiedAmount ? "✓ Copied" : "Copy Amount"}
+                </button>
+              </div>
               <button
                 type="button"
                 onClick={() => setShowQr(!showQr)}
-                className="inline-flex items-center gap-1.5 text-xs text-brand-700 hover:text-brand-900 font-semibold underline"
+                className="inline-flex items-center gap-1.5 text-xs text-brand-700 hover:text-brand-900 font-semibold underline self-start sm:self-auto"
               >
                 <span>📷</span>
                 <span>{showQr ? "Hide QR Code" : "Scan QR Code to Pay"}</span>
               </button>
             </div>
 
-            {/* Dynamic QR Code Modal / View */}
+            {/* Dynamic QR Code Modal / Card */}
             {showQr && qrDataUrl && (
-              <div className="mt-2 flex flex-col items-center justify-center p-4 bg-white rounded-xl border border-brand-200 shadow-sm text-center">
-                <p className="text-xs font-semibold text-brand-900 mb-2">
-                  Scan with Google Pay, PhonePe, or Paytm app on your phone:
-                </p>
-                <div className="p-2.5 rounded-xl border-2 border-brand-100 bg-white shadow-sm inline-block">
-                  <img src={qrDataUrl} alt="UPI Payment QR Code" className="h-44 w-44 mx-auto" />
+              <div
+                id="upi-qr-card"
+                className="mt-3 flex flex-col items-center justify-center p-5 bg-white rounded-2xl border-2 border-brand-200 shadow-sm text-center space-y-3"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">
+                    ✓
+                  </span>
+                  <p className="text-xs font-bold text-brand-900">
+                    Scan with Google Pay, PhonePe, Paytm, or BHIM:
+                  </p>
                 </div>
-                <p className="text-[11px] font-mono font-bold text-brand-800 mt-2 bg-brand-50 px-2.5 py-0.5 rounded border border-brand-200 inline-block">
-                  {upiId}
-                </p>
-                <p className="text-[11px] text-emerald-700 font-bold mt-1">Pre-configured amount: ₹199.00</p>
+
+                <div className="p-3 rounded-2xl border-2 border-brand-200 bg-white shadow-md inline-block">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={qrDataUrl} alt="UPI Payment QR Code" className="h-48 w-48 mx-auto" />
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center gap-2 justify-center">
+                  <div className="flex items-center gap-1.5 bg-brand-50 px-3 py-1 rounded-lg border border-brand-200">
+                    <span className="text-[11px] text-brand-600">UPI ID:</span>
+                    <span className="font-mono text-xs font-bold text-brand-900">{upiId}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={copyUpi}
+                    className="rounded-lg bg-brand-100 hover:bg-brand-200 text-brand-800 px-2.5 py-1 text-[11px] font-semibold transition"
+                  >
+                    {copied ? "✓ Copied!" : "Copy UPI"}
+                  </button>
+                </div>
+
+                <div className="text-[11px] text-brand-600 max-w-sm leading-relaxed">
+                  Amount of <strong>₹199.00</strong> and Payee <strong>Sweetly</strong> are pre-configured. After completing the payment in your UPI app, copy the 12-digit UTR / Reference ID and submit it below.
+                </div>
               </div>
             )}
           </div>
