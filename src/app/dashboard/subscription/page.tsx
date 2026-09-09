@@ -11,7 +11,7 @@ export default async function SubscriptionPage() {
     .from("subscriptions")
     .select("plan, status, trial_ends_at, current_period_end")
     .eq("shop_id", shop.id)
-    .single();
+    .maybeSingle();
 
   const latestRequest = await getLatestRequestForShop(shop.id);
 
@@ -26,7 +26,7 @@ export default async function SubscriptionPage() {
 
   const isSubscriptionActive =
     sub?.status === "ACTIVE" &&
-    sub.current_period_end &&
+    sub?.current_period_end &&
     new Date(sub.current_period_end) > now;
 
   const daysRemaining =

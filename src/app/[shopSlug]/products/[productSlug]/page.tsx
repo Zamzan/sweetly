@@ -14,7 +14,9 @@ export default async function ProductDetailPage({
   const supabase = await createServerSupabaseClient();
 
   let product: any = null;
-  const prodRes = await supabase
+
+  // 1. First try query with extended columns (if schema migrations were applied)
+  const fullRes = await supabase
     .from("products")
     .select(`
       id,
@@ -22,6 +24,7 @@ export default async function ProductDetailPage({
       name,
       description,
       price,
+      available,
       has_variants,
       variants,
       sizes,
@@ -33,11 +36,13 @@ export default async function ProductDetailPage({
     `)
     .eq("shop_id", shop.id)
     .eq("slug", productSlug)
-    .eq("available", true)
     .maybeSingle();
 
-  if (prodRes.error && (prodRes.error.message?.includes("column") || prodRes.error.message?.includes("schema cache"))) {
-    const fallbackRes = await supabase
+  if (!fullRes.error && fullRes.data) {
+    product = fullRes.data;
+  } else {
+    // 2. Core fallback query containing only core guaranteed columns
+    const coreRes = await supabase
       .from("products")
       .select(`
         id,
@@ -45,7 +50,7 @@ export default async function ProductDetailPage({
         name,
         description,
         price,
-        variants,
+        available,
         product_images (
           id,
           storage_path
@@ -53,18 +58,61 @@ export default async function ProductDetailPage({
       `)
       .eq("shop_id", shop.id)
       .eq("slug", productSlug)
-      .eq("available", true)
       .maybeSingle();
-    product = fallbackRes.data;
-  } else {
-    product = prodRes.data;
+
+    if (!coreRes.error && coreRes.data) {
+      product = coreRes.data;
+    } else {
+      // 3. Fallback matching by ID in case productSlug is an ID
+      const idRes = await supabase
+        .from("products")
+        .select(`
+          id,
+          slug,
+          name,
+          description,
+          price,
+          available,
+          product_images (
+            id,
+            storage_path
+          )
+        `)
+        .eq("shop_id", shop.id)
+        .eq("id", productSlug)
+        .maybeSingle();
+
+      if (!idRes.error && idRes.data) {
+        product = idRes.data;
+      }
+    }
   }
 
   if (!product) notFound();
 
-
   const rawProduct = product as any;
-  const variants = Array.isArray(rawProduct.variants) ? rawProduct.variants : [];
+  let variants = Array.isArray(rawProduct.variants) ? rawProduct.variants : [];
+  let cleanDescription = rawProduct.description || "";
+
+  // Extract embedded variants from description if stored via resilient encoding
+  const variantMarker = "<!--sweetly_variants:";
+  if (cleanDescription.includes(variantMarker)) {
+    try {
+      const markerStart = cleanDescription.indexOf(variantMarker);
+      const markerEnd = cleanDescription.indexOf("-->", markerStart);
+      if (markerEnd !== -1) {
+        const jsonStr = cleanDescription.slice(markerStart + variantMarker.length, markerEnd);
+        const parsed = JSON.parse(jsonStr);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          variants = parsed;
+        }
+        cleanDescription = cleanDescription.slice(0, markerStart).trim();
+      }
+    } catch (e) {
+      console.warn("Failed parsing embedded variants:", e);
+    }
+  }
+
   const derivedSizes = Array.isArray(rawProduct.sizes) && rawProduct.sizes.length > 0
     ? rawProduct.sizes
     : Array.from(new Set(variants.map((v: any) => v.size).filter(Boolean)));
@@ -93,7 +141,7 @@ export default async function ProductDetailPage({
             id: product.id,
             slug: product.slug,
             name: product.name,
-            description: product.description,
+            description: cleanDescription,
             price: Number(product.price),
             has_variants: Boolean(
               product.has_variants ||

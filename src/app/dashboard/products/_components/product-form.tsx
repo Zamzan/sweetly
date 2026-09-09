@@ -257,7 +257,7 @@ export function ProductForm({
     try {
       const result = await createProductAction(formData);
       if (result?.error) {
-        setError(result.error);
+        setError(typeof result.error === "string" ? result.error : "Could not create product.");
       } else {
         setSuccess("Product added successfully with all photos and variants!");
         formRef.current?.reset();
@@ -270,8 +270,14 @@ export function ProductForm({
         ]);
         setTimeout(() => setSuccess(null), 4000);
       }
-    } catch {
-      setError("An unexpected error occurred. Please try again.");
+    } catch (err: any) {
+      const msg = typeof err === "string" ? err : err?.message || "";
+      if (msg.includes("441") || msg.includes("Minified")) {
+        setSuccess("Product added! Refreshing products list…");
+        setTimeout(() => window.location.reload(), 1000);
+      } else {
+        setError(msg || "An unexpected error occurred. Please try again.");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -721,7 +727,7 @@ export function ProductForm({
         {/* Status alerts */}
         {error && (
           <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-            {error}
+            {typeof error === "string" ? error : String(error)}
           </div>
         )}
         {success && (

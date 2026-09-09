@@ -31,29 +31,44 @@ h1, h2, h3, h4 {
 
 /* Storefront Full Themes */
 .theme-midnight-black,
+.theme-pure-black,
 .theme-dark {
-  --theme-bg: #09090b;
-  --theme-card-bg: #121215;
-  --theme-card-border: #27272a;
-  --theme-text-primary: #fafafa;
-  --theme-text-secondary: #a1a1aa;
-  --theme-header-bg: rgba(12, 12, 15, 0.95);
-  --theme-header-border: #27272a;
-  --theme-footer-bg: #09090b;
-  --theme-footer-text: #71717a;
+  --theme-bg: #050507;
+  --theme-card-bg: #111115;
+  --theme-card-border: #232328;
+  --theme-text-primary: #f8fafc;
+  --theme-text-secondary: #94a3b8;
+  --theme-header-bg: rgba(9, 9, 12, 0.96);
+  --theme-header-border: #232328;
+  --theme-footer-bg: #050507;
+  --theme-footer-text: #64748b;
   color-scheme: dark;
 }
 
-.theme-luxury-gold {
-  --theme-bg: #fefce8;
+.theme-luxury-gold,
+.theme-royal-gold {
+  --theme-bg: #0d0a05;
+  --theme-card-bg: #17130a;
+  --theme-card-border: #4d3a14;
+  --theme-text-primary: #fef08a;
+  --theme-text-secondary: #eab308;
+  --theme-header-bg: rgba(18, 14, 8, 0.96);
+  --theme-header-border: #5e4618;
+  --theme-footer-bg: #0d0a05;
+  --theme-footer-text: #ca8a04;
+  color-scheme: dark;
+}
+
+.theme-champagne-gold {
+  --theme-bg: #fcf9f2;
   --theme-card-bg: #ffffff;
-  --theme-card-border: #fef08a;
-  --theme-text-primary: #422006;
-  --theme-text-secondary: #854d0e;
-  --theme-header-bg: rgba(254, 252, 232, 0.95);
-  --theme-header-border: #fef08a;
-  --theme-footer-bg: #fef9c3;
-  --theme-footer-text: #854d0e;
+  --theme-card-border: #e9dec8;
+  --theme-text-primary: #382b13;
+  --theme-text-secondary: #8c6d2d;
+  --theme-header-bg: rgba(252, 249, 242, 0.95);
+  --theme-header-border: #e9dec8;
+  --theme-footer-bg: #f5eedc;
+  --theme-footer-text: #8c6d2d;
 }
 
 .theme-rose-boutique {

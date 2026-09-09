@@ -22,7 +22,8 @@ export default async function ShopHomePage({ params }: { params: Promise<{ shopS
 
   const supabase = await createServerSupabaseClient();
 
-  const { data: featured } = await supabase
+  let featured: any[] = [];
+  const fullFeaturedRes = await supabase
     .from("products")
     .select(`
       id,
@@ -42,6 +43,29 @@ export default async function ShopHomePage({ params }: { params: Promise<{ shopS
     .eq("available", true)
     .eq("featured", true)
     .limit(6);
+
+  if (!fullFeaturedRes.error && fullFeaturedRes.data) {
+    featured = fullFeaturedRes.data;
+  } else {
+    const coreFeaturedRes = await supabase
+      .from("products")
+      .select(`
+        id,
+        name,
+        slug,
+        price,
+        description,
+        product_images (
+          id,
+          storage_path
+        )
+      `)
+      .eq("shop_id", shop.id)
+      .eq("available", true)
+      .eq("featured", true)
+      .limit(6);
+    featured = coreFeaturedRes.data || [];
+  }
 
 
   const theme = (shop.theme && typeof shop.theme === "object" ? shop.theme : {}) as Record<

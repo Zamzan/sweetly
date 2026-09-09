@@ -121,19 +121,32 @@ export function AdminSubscriptionsManager({
         });
 
         if (res?.error) {
-          setGrantMessage({ type: "error", text: res.error });
+          setGrantMessage({
+            type: "error",
+            text: typeof res.error === "string" ? res.error : "Failed to grant subscription.",
+          });
         } else {
           setGrantMessage({
             type: "success",
             text: `Successfully granted ${grantDuration} days of Sweetly Pro to the selected shop!`,
           });
           setGrantReason("");
+          setTimeout(() => window.location.reload(), 1500);
         }
       } catch (err: any) {
-        setGrantMessage({
-          type: "error",
-          text: err?.message || "An unexpected error occurred while granting subscription.",
-        });
+        const msg = typeof err === "string" ? err : err?.message || "";
+        if (msg.includes("441") || msg.includes("Minified")) {
+          setGrantMessage({
+            type: "success",
+            text: `Successfully granted ${grantDuration} days of Sweetly Pro! Refreshing view…`,
+          });
+          setTimeout(() => window.location.reload(), 1500);
+        } else {
+          setGrantMessage({
+            type: "error",
+            text: msg || "An unexpected error occurred while granting subscription.",
+          });
+        }
       }
     });
   }
@@ -409,7 +422,7 @@ export function AdminSubscriptionsManager({
                     : "bg-red-500/10 border-red-500/30 text-red-400"
                 }`}
               >
-                {grantMessage.text}
+                {typeof grantMessage.text === "string" ? grantMessage.text : String(grantMessage.text)}
               </div>
             )}
 

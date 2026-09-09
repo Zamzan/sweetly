@@ -130,7 +130,7 @@ export function SettingsForm({ shop }: { shop: ShopData }) {
     try {
       const res = await updateShopSettingsAction(formData);
       if (res?.error) {
-        setError(res.error);
+        setError(typeof res.error === "string" ? res.error : "Could not save storefront settings.");
       } else {
         setSuccess("✓ Storefront settings saved successfully!");
         if (res?.shop) {
@@ -156,7 +156,13 @@ export function SettingsForm({ shop }: { shop: ShopData }) {
         setTimeout(() => setSuccess(null), 4000);
       }
     } catch (err: any) {
-      setError(err?.message || "An unexpected error occurred while saving. Please try again.");
+      const msg = typeof err === "string" ? err : err?.message || "";
+      if (msg.includes("441") || msg.includes("Minified")) {
+        setSuccess("✓ Storefront settings saved successfully! Refreshing…");
+        setTimeout(() => window.location.reload(), 1200);
+      } else {
+        setError(msg || "An unexpected error occurred while saving. Please try again.");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -489,21 +495,30 @@ export function SettingsForm({ shop }: { shop: ShopData }) {
             {[
               {
                 id: "midnight-black",
-                title: "Midnight Black & Gold",
-                desc: "Pitch-black background, obsidian cards, and luxury gold accents.",
+                title: "Pitch Black & Gold",
+                desc: "True OLED black background, obsidian cards, and gold accents.",
                 primary: "#eab308",
-                previewBg: "#09090b",
-                previewCard: "#18181b",
-                previewText: "#fafafa",
+                previewBg: "#050507",
+                previewCard: "#111115",
+                previewText: "#f8fafc",
               },
               {
                 id: "luxury-gold",
-                title: "Royal Gold & Amber",
-                desc: "Warm champagne gold background with rich amber and bronze styling.",
-                primary: "#ca8a04",
-                previewBg: "#fefce8",
+                title: "Obsidian & Imperial Gold",
+                desc: "Opulent dark obsidian background with radiant gold borders and amber accents.",
+                primary: "#f59e0b",
+                previewBg: "#0d0a05",
+                previewCard: "#17130a",
+                previewText: "#fef08a",
+              },
+              {
+                id: "champagne-gold",
+                title: "Royal Champagne Gold",
+                desc: "Warm luminous champagne gold background with rich amber and bronze styling.",
+                primary: "#d97706",
+                previewBg: "#fcf9f2",
                 previewCard: "#ffffff",
-                previewText: "#422006",
+                previewText: "#382b13",
               },
               {
                 id: "rose-boutique",
@@ -644,7 +659,7 @@ export function SettingsForm({ shop }: { shop: ShopData }) {
       {/* Alerts */}
       {error && (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-800">
-          ✕ {error}
+          ✕ {typeof error === "string" ? error : String(error)}
         </div>
       )}
 

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getCurrentShopOrRedirect } from "@/lib/current-shop";
+import { getCurrentShop, getCurrentShopOrRedirect } from "@/lib/current-shop";
 import { productSchema, ALLOWED_IMAGE_MIME_TYPES, MAX_IMAGE_BYTES } from "@/lib/validation";
 import { safeLogAudit } from "@/lib/audit";
 import { sniffImageType } from "@/lib/images";
@@ -23,38 +23,43 @@ function cleanSlug(input: string): string {
 }
 
 export async function createProductAction(formData: FormData) {
-  const { shop, user, role, permissions } = await getCurrentShopOrRedirect();
+  try {
+    const session = await getCurrentShop();
+    if (!session) {
+      return { error: "Your session has expired. Please refresh and log in again." };
+    }
+    const { shop, user, role, permissions } = session;
 
-  if (role !== "OWNER" && !permissions.products) {
-    return { error: "You don't have permission to manage products." };
-  }
+    if (role !== "OWNER" && !permissions?.products) {
+      return { error: "You don't have permission to manage products." };
+    }
 
-  const rawName = formData.get("name");
-  const rawPrice = formData.get("price");
-  const rawCategoryId = formData.get("categoryId");
-  const rawDescription = formData.get("description");
+    const rawName = formData.get("name");
+    const rawPrice = formData.get("price");
+    const rawCategoryId = formData.get("categoryId");
+    const rawDescription = formData.get("description");
 
-  const parsed = productSchema.safeParse({
-    name: rawName,
-    description: rawDescription,
-    price: rawPrice,
-    categoryId: rawCategoryId || null,
-    available: formData.get("available") === "on" || formData.get("available") === "true",
-    featured: formData.get("featured") === "on" || formData.get("featured") === "true",
-  });
+    const parsed = productSchema.safeParse({
+      name: rawName,
+      description: rawDescription,
+      price: rawPrice,
+      categoryId: rawCategoryId || null,
+      available: formData.get("available") === "on" || formData.get("available") === "true",
+      featured: formData.get("featured") === "on" || formData.get("featured") === "true",
+    });
 
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Invalid product data." };
-  }
+    if (!parsed.success) {
+      return { error: parsed.error.issues[0]?.message ?? "Invalid product data." };
+    }
 
-  const supabase = await createServerSupabaseClient();
-  const baseSlug = cleanSlug(parsed.data.name);
-  const slug = `${baseSlug}-${Date.now().toString(36).slice(-5)}`;
+    const supabase = await createServerSupabaseClient();
+    const baseSlug = cleanSlug(parsed.data.name);
+    const slug = `${baseSlug}-${Date.now().toString(36).slice(-5)}`;
 
-  const cleanName = DOMPurify.sanitize(parsed.data.name, { ALLOWED_TAGS: [] });
-  const cleanDescription = parsed.data.description
-    ? DOMPurify.sanitize(parsed.data.description, { ALLOWED_TAGS: [] })
-    : null;
+    const cleanName = DOMPurify.sanitize(parsed.data.name, { ALLOWED_TAGS: [] });
+    const cleanDescription = parsed.data.description
+      ? DOMPurify.sanitize(parsed.data.description, { ALLOWED_TAGS: [] })
+      : null;
 
   const rawSectionId = formData.get("sectionId")?.toString().trim();
   const sectionId = rawSectionId && rawSectionId !== "none" ? rawSectionId : null;
@@ -137,6 +142,11 @@ export async function createProductAction(formData: FormData) {
     }
   }
 
+  // If variants exist, embed them in description so they are preserved across any DB schema level
+  const finalDescription = variants.length > 0
+    ? `${cleanDescription || ""}\n\n<!--sweetly_variants:${JSON.stringify(variants)}-->`.trim()
+    : cleanDescription;
+
   // Base insert payload compatible with initial schema
   const baseInsert: Record<string, any> = {
     shop_id: shop.id,
@@ -144,7 +154,7 @@ export async function createProductAction(formData: FormData) {
     section_id: sectionId || sectionIds[0] || null,
     name: cleanName,
     slug,
-    description: cleanDescription,
+    description: finalDescription,
     price: parsed.data.price,
     available: parsed.data.available,
     featured: parsed.data.featured,
@@ -175,7 +185,7 @@ export async function createProductAction(formData: FormData) {
         category_id: parsed.data.categoryId || categoryIds[0] || null,
         name: cleanName,
         slug,
-        description: cleanDescription,
+        description: finalDescription,
         price: parsed.data.price,
         available: parsed.data.available,
         featured: parsed.data.featured,
@@ -189,7 +199,7 @@ export async function createProductAction(formData: FormData) {
           category_id: parsed.data.categoryId || null,
           name: cleanName,
           slug,
-          description: cleanDescription,
+          description: finalDescription,
           price: parsed.data.price,
           available: parsed.data.available,
           featured: parsed.data.featured,
@@ -267,17 +277,31 @@ export async function createProductAction(formData: FormData) {
     targetId: product.id,
   });
 
-  revalidatePath("/dashboard/products");
-  revalidatePath(`/${shop.slug}`);
-  revalidatePath(`/${shop.slug}/products`);
+  try {
+    revalidatePath("/dashboard/products");
+    revalidatePath(`/${shop.slug}`);
+    revalidatePath(`/${shop.slug}/products`);
+  } catch (e) {
+    console.warn("revalidatePath warning:", e);
+  }
+
   return { success: true };
+  } catch (err: any) {
+    console.error("createProductAction fatal error:", err);
+    return { error: err?.message || "An unexpected error occurred while creating product." };
+  }
 }
 
 export async function updateProductAction(productId: string, formData: FormData) {
-  const { shop, user, role, permissions } = await getCurrentShopOrRedirect();
-  if (role !== "OWNER" && !permissions.products) {
-    return { error: "You don't have permission to manage products." };
-  }
+  try {
+    const session = await getCurrentShop();
+    if (!session) {
+      return { error: "Your session has expired. Please refresh and log in again." };
+    }
+    const { shop, user, role, permissions } = session;
+    if (role !== "OWNER" && !permissions?.products) {
+      return { error: "You don't have permission to manage products." };
+    }
 
   const updates: Record<string, unknown> = {};
 
@@ -361,6 +385,10 @@ export async function updateProductAction(productId: string, formData: FormData)
           updates.variants = variants;
           updates.sizes = Array.from(new Set(variants.map((v) => v.size).filter(Boolean) as string[]));
           updates.colors = Array.from(new Set(variants.map((v) => v.color).filter(Boolean) as string[]));
+
+          // Embed in description so variants are retained even on core DB schema
+          const baseDesc = (updates.description !== undefined ? updates.description : "") as string;
+          updates.description = `${baseDesc || ""}\n\n<!--sweetly_variants:${JSON.stringify(variants)}-->`.trim();
         }
       } catch {
         // Ignore parse errors
@@ -471,37 +499,60 @@ export async function updateProductAction(productId: string, formData: FormData)
     targetId: productId,
   });
 
-  revalidatePath("/dashboard/products");
-  revalidatePath(`/${shop.slug}`);
-  revalidatePath(`/${shop.slug}/products`);
+  try {
+    revalidatePath("/dashboard/products");
+    revalidatePath(`/${shop.slug}`);
+    revalidatePath(`/${shop.slug}/products`);
+  } catch (e) {
+    console.warn("revalidatePath warning:", e);
+  }
+
   return { success: true };
+  } catch (err: any) {
+    console.error("updateProductAction fatal error:", err);
+    return { error: err?.message || "Failed to update product." };
+  }
 }
 
 export async function deleteProductAction(productId: string) {
-  const { shop, user, role, permissions } = await getCurrentShopOrRedirect();
-  if (role !== "OWNER" && !permissions.products) {
-    return { error: "You don't have permission to manage products." };
+  try {
+    const session = await getCurrentShop();
+    if (!session) {
+      return { error: "Your session has expired. Please refresh and log in again." };
+    }
+    const { shop, user, role, permissions } = session;
+    if (role !== "OWNER" && !permissions?.products) {
+      return { error: "You don't have permission to manage products." };
+    }
+
+    const supabase = await createServerSupabaseClient();
+    const { error } = await supabase
+      .from("products")
+      .delete()
+      .eq("id", productId)
+      .eq("shop_id", shop.id);
+
+    if (error) return { error: "Could not delete product." };
+
+    await safeLogAudit({
+      shopId: shop.id,
+      actorId: user.id,
+      action: "product.delete",
+      targetType: "product",
+      targetId: productId,
+    });
+
+    try {
+      revalidatePath("/dashboard/products");
+      revalidatePath(`/${shop.slug}`);
+      revalidatePath(`/${shop.slug}/products`);
+    } catch (e) {
+      console.warn("revalidatePath warning:", e);
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.error("deleteProductAction fatal error:", err);
+    return { error: err?.message || "Failed to delete product." };
   }
-
-  const supabase = await createServerSupabaseClient();
-  const { error } = await supabase
-    .from("products")
-    .delete()
-    .eq("id", productId)
-    .eq("shop_id", shop.id);
-
-  if (error) return { error: "Could not delete product." };
-
-  await safeLogAudit({
-    shopId: shop.id,
-    actorId: user.id,
-    action: "product.delete",
-    targetType: "product",
-    targetId: productId,
-  });
-
-  revalidatePath("/dashboard/products");
-  revalidatePath(`/${shop.slug}`);
-  revalidatePath(`/${shop.slug}/products`);
-  return { success: true };
 }
