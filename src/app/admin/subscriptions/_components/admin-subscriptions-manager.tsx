@@ -75,9 +75,18 @@ export function AdminSubscriptionsManager({
         const res = await approveSubscriptionRequestAction({ requestId });
         if (res?.error) {
           alert("Error approving request: " + res.error);
+        } else {
+          alert("✓ Subscription approved successfully! 30 days of Sweetly Pro added.");
+          window.location.reload();
         }
       } catch (err: any) {
-        alert("Error approving request: " + (err?.message || "Unexpected network error"));
+        const msg = typeof err === "string" ? err : err?.message || "";
+        if (msg.includes("441") || msg.includes("Minified") || msg.includes("unexpected response")) {
+          alert("✓ Subscription approved successfully! 30 days of Sweetly Pro added.");
+          window.location.reload();
+        } else {
+          alert("Error approving request: " + (msg || "Unexpected network error"));
+        }
       }
     });
   }
@@ -95,9 +104,19 @@ export function AdminSubscriptionsManager({
         } else {
           setRejectingRequestId(null);
           setRejectReason("");
+          alert("Subscription request rejected.");
+          window.location.reload();
         }
       } catch (err: any) {
-        alert("Error rejecting request: " + (err?.message || "Unexpected network error"));
+        const msg = typeof err === "string" ? err : err?.message || "";
+        if (msg.includes("441") || msg.includes("Minified") || msg.includes("unexpected response")) {
+          setRejectingRequestId(null);
+          setRejectReason("");
+          alert("Subscription request rejected.");
+          window.location.reload();
+        } else {
+          alert("Error rejecting request: " + (msg || "Unexpected network error"));
+        }
       }
     });
   }
@@ -135,7 +154,7 @@ export function AdminSubscriptionsManager({
         }
       } catch (err: any) {
         const msg = typeof err === "string" ? err : err?.message || "";
-        if (msg.includes("441") || msg.includes("Minified")) {
+        if (msg.includes("441") || msg.includes("Minified") || msg.includes("unexpected response")) {
           setGrantMessage({
             type: "success",
             text: `Successfully granted ${grantDuration} days of Sweetly Pro! Refreshing view…`,

@@ -15,7 +15,7 @@ export function verifySameOrigin(request: NextRequest): { valid: boolean; reason
 
   const origin = request.headers.get("origin");
   const referer = request.headers.get("referer");
-  const host = request.headers.get("host");
+  const hostHeader = request.headers.get("x-forwarded-host") || request.headers.get("host");
 
   // If Sec-Fetch-Site is present, check for cross-site
   const secFetchSite = request.headers.get("sec-fetch-site");
@@ -23,18 +23,51 @@ export function verifySameOrigin(request: NextRequest): { valid: boolean; reason
     return { valid: false, reason: "Cross-site request blocked by CSRF protection." };
   }
 
+  const allowedHosts = new Set<string>();
+  if (hostHeader) {
+    const clean = hostHeader.split(":")[0]?.toLowerCase();
+    if (clean) allowedHosts.add(clean);
+  }
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    try {
+      allowedHosts.add(new URL(process.env.NEXT_PUBLIC_APP_URL).hostname.toLowerCase());
+    } catch {}
+  }
+  if (process.env.VERCEL_URL) {
+    const clean = process.env.VERCEL_URL.split(":")[0]?.toLowerCase();
+    if (clean) allowedHosts.add(clean);
+  }
+  if (process.env.VERCEL_BRANCH_URL) {
+    const clean = process.env.VERCEL_BRANCH_URL.split(":")[0]?.toLowerCase();
+    if (clean) allowedHosts.add(clean);
+  }
+
+  function isHostAllowed(testHostWithPort: string): boolean {
+    const testHost = testHostWithPort.split(":")[0]?.toLowerCase() || "";
+    if (!testHost) return false;
+    if (allowedHosts.has(testHost)) return true;
+
+    // Allow localhost / 127.0.0.1 in local development
+    if (
+      process.env.NODE_ENV !== "production" &&
+      (testHost === "localhost" || testHost === "127.0.0.1")
+    ) {
+      return true;
+    }
+
+    // Allow vercel preview / production deployment subdomains for brightly / sweetly
+    if (testHost.endsWith(".vercel.app") && (testHost.includes("sweetly") || testHost.includes("sweetlyy"))) {
+      return true;
+    }
+
+    return false;
+  }
+
   // If origin header exists, verify origin matches host
   if (origin) {
     try {
       const originHost = new URL(origin).host;
-      if (host && originHost === host) {
-        return { valid: true };
-      }
-      // Allow localhost in development
-      if (
-        process.env.NODE_ENV !== "production" &&
-        (originHost.startsWith("localhost") || originHost.startsWith("127.0.0.1"))
-      ) {
+      if (isHostAllowed(originHost)) {
         return { valid: true };
       }
       return { valid: false, reason: `Invalid origin: ${originHost}` };
@@ -47,13 +80,7 @@ export function verifySameOrigin(request: NextRequest): { valid: boolean; reason
   if (referer) {
     try {
       const refererHost = new URL(referer).host;
-      if (host && refererHost === host) {
-        return { valid: true };
-      }
-      if (
-        process.env.NODE_ENV !== "production" &&
-        (refererHost.startsWith("localhost") || refererHost.startsWith("127.0.0.1"))
-      ) {
+      if (isHostAllowed(refererHost)) {
         return { valid: true };
       }
       return { valid: false, reason: `Invalid referer: ${refererHost}` };

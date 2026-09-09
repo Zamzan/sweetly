@@ -107,8 +107,6 @@ export async function approveSubscriptionRequestAction({ requestId }: { requestI
 
     try {
       revalidatePath("/admin/subscriptions");
-      revalidatePath("/dashboard/subscription");
-      revalidatePath("/admin");
     } catch (e) {
       console.warn("revalidatePath warning:", e);
     }
@@ -166,7 +164,6 @@ export async function rejectSubscriptionRequestAction({
 
     try {
       revalidatePath("/admin/subscriptions");
-      revalidatePath("/dashboard/subscription");
     } catch (e) {
       console.warn("revalidatePath warning:", e);
     }
@@ -268,8 +265,6 @@ export async function grantSubscriptionAction({
 
     try {
       revalidatePath("/admin/subscriptions");
-      revalidatePath("/admin/shops");
-      revalidatePath("/dashboard/subscription");
     } catch (e) {
       console.warn("revalidatePath warning:", e);
     }

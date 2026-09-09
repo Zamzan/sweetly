@@ -23,6 +23,7 @@ export function CartDrawer({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [orderSent, setOrderSent] = useState(false);
+  const [sentWhatsappUrl, setSentWhatsappUrl] = useState<string | null>(null);
 
   if (!isCartOpen) return null;
 
@@ -52,20 +53,35 @@ export function CartDrawer({
         }),
       });
 
-      const data = await res.json();
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch {
+        // Non-JSON response (e.g. server error page)
+      }
+
       if (!res.ok) {
-        setError(data.error || "Failed to place order. Please try again.");
+        setError(data?.error || `Unable to submit order (Server error ${res.status}). Please try again.`);
         return;
       }
 
       setOrderSent(true);
-      clearCart();
-
-      if (data.whatsappUrl) {
-        window.open(data.whatsappUrl, "_blank", "noopener,noreferrer");
+      if (data?.whatsappUrl) {
+        setSentWhatsappUrl(data.whatsappUrl);
+        // Attempt to open in a new tab or navigate
+        try {
+          const win = window.open(data.whatsappUrl, "_blank", "noopener,noreferrer");
+          if (!win || win.closed || typeof win.closed === "undefined") {
+            window.location.href = data.whatsappUrl;
+          }
+        } catch {
+          window.location.href = data.whatsappUrl;
+        }
       }
-    } catch {
-      setError("Network error. Please try again.");
+      clearCart();
+    } catch (err: any) {
+      console.error("Cart order submission network error:", err);
+      setError(err?.message || "Network error. Please check your connection and try again.");
     } finally {
       setSubmitting(false);
     }
@@ -110,15 +126,28 @@ export function CartDrawer({
                 <p className="mt-1 text-xs text-emerald-700">
                   Your order details and instructions were prepared. If WhatsApp opened in another tab, press Send there to chat directly with {shopName}.
                 </p>
-                <button
-                  onClick={() => {
-                    setOrderSent(false);
-                    closeCart();
-                  }}
-                  className="mt-5 rounded-xl bg-emerald-700 px-5 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-emerald-800"
-                >
-                  Done
-                </button>
+                <div className="mt-4 flex flex-col gap-2">
+                  {sentWhatsappUrl && (
+                    <a
+                      href={sentWhatsappUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 flex items-center justify-center gap-1.5"
+                    >
+                      <span>💬</span> Open WhatsApp Chat
+                    </a>
+                  )}
+                  <button
+                    onClick={() => {
+                      setOrderSent(false);
+                      setSentWhatsappUrl(null);
+                      closeCart();
+                    }}
+                    className="rounded-xl border border-emerald-300 bg-white px-5 py-2 text-xs font-semibold text-emerald-800 shadow-sm hover:bg-emerald-50"
+                  >
+                    Done
+                  </button>
+                </div>
               </div>
             ) : items.length === 0 ? (
               <div className="py-16 text-center">
