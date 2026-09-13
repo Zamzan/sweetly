@@ -29,10 +29,18 @@ export default async function SubscriptionPage() {
     sub?.current_period_end &&
     new Date(sub.current_period_end) > now;
 
+  const subPeriodEnd = sub?.current_period_end ? new Date(sub.current_period_end) : null;
+  const subDaysRemaining =
+    isSubscriptionActive && subPeriodEnd
+      ? Math.max(0, Math.ceil((subPeriodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
+      : 0;
+
   const daysRemaining =
     isTrialActive && trialEnds
       ? Math.max(0, Math.ceil((trialEnds.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
       : 0;
+
+  const effectiveDaysRemaining = isSubscriptionActive ? subDaysRemaining : daysRemaining;
 
   const upiId = process.env.SWEETLY_PAYMENT_UPI || "zamzanjr10@okaxis";
 
@@ -44,6 +52,24 @@ export default async function SubscriptionPage() {
           Manage your Sweetly store subscription, UPI payments, and billing status.
         </p>
       </div>
+
+      {/* Active Sweetly Pro Subscription Alert */}
+      {isSubscriptionActive && (
+        <div className="rounded-2xl border border-emerald-300 bg-emerald-50/90 p-5 text-emerald-950 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm font-bold text-emerald-800">
+              <span className="text-lg">🌟</span>
+              <span>Sweetly Pro Active ({subDaysRemaining} Days Remaining)</span>
+            </div>
+            <span className="rounded-full bg-emerald-200/80 px-2.5 py-0.5 text-[11px] font-extrabold text-emerald-900 border border-emerald-300">
+              {subDaysRemaining} Days Left
+            </span>
+          </div>
+          <p className="mt-2 text-xs text-emerald-800 leading-relaxed">
+            Your Sweetly Pro membership is fully active with uninterrupted access to your storefront, unlimited customer orders, catalog, and custom themes. Valid until <strong suppressHydrationWarning>{subPeriodEnd?.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</strong>.
+          </p>
+        </div>
+      )}
 
       {/* 14-Day Free Trial Alert */}
       {isTrialActive && (
@@ -82,8 +108,8 @@ export default async function SubscriptionPage() {
             <p className="text-xl font-bold font-display text-brand-900">Sweetly Pro</p>
           </div>
           {isSubscriptionActive ? (
-            <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 border border-emerald-200">
-              ● Active (₹199/mo)
+            <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800 border border-emerald-300">
+              ● Active ({subDaysRemaining} Days Remaining)
             </span>
           ) : isTrialActive ? (
             <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800 border border-emerald-300">
@@ -142,7 +168,7 @@ export default async function SubscriptionPage() {
           }
           isSubscriptionActive={Boolean(isSubscriptionActive)}
           isTrialActive={Boolean(isTrialActive)}
-          daysRemaining={daysRemaining}
+          daysRemaining={effectiveDaysRemaining}
           trialEndsAt={sub?.trial_ends_at ?? null}
         />
       )}

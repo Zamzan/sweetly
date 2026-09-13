@@ -7,6 +7,7 @@ import { normalizePhone } from "@/lib/validation";
 import { AddToCartButton } from "./_components/add-to-cart-button";
 import { StorePaused } from "./_components/store-paused";
 import { StoreOffline } from "./_components/store-offline";
+import { parseProductVariants } from "@/lib/product-variants";
 
 export default async function ShopHomePage({ params }: { params: Promise<{ shopSlug: string }> }) {
   const { shopSlug } = await params;
@@ -30,6 +31,7 @@ export default async function ShopHomePage({ params }: { params: Promise<{ shopS
       name,
       slug,
       price,
+      description,
       has_variants,
       variants,
       sizes,
@@ -66,6 +68,18 @@ export default async function ShopHomePage({ params }: { params: Promise<{ shopS
       .limit(6);
     featured = coreFeaturedRes.data || [];
   }
+
+  featured = featured.map((p) => {
+    const parsed = parseProductVariants(p.description, p.variants, p.sizes, p.colors);
+    return {
+      ...p,
+      description: parsed.cleanDescription,
+      variants: parsed.variants,
+      sizes: parsed.sizes,
+      colors: parsed.colors,
+      has_variants: parsed.variants.length > 0 || Boolean(p.has_variants),
+    };
+  });
 
 
   const theme = (shop.theme && typeof shop.theme === "object" ? shop.theme : {}) as Record<

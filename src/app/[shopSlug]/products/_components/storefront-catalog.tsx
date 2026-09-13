@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { getPublicAssetUrl } from "@/lib/images";
 import { AddToCartButton } from "../../_components/add-to-cart-button";
+import type { ProductVariantItem } from "@/lib/product-variants";
 
 export interface CatalogProduct {
   id: string;
@@ -17,14 +18,7 @@ export interface CatalogProduct {
   section_id?: string | null;
   section_name?: string | null;
   has_variants?: boolean;
-  variants?: Array<{
-    id: string;
-    name: string;
-    size?: string;
-    color?: string;
-    price: number;
-    available?: boolean;
-  }>;
+  variants?: ProductVariantItem[];
   sizes?: string[];
   colors?: string[];
   categories?: string[];
@@ -131,7 +125,8 @@ export function StorefrontCatalog({
       const q = searchQuery.toLowerCase().trim();
       list = list.filter((p) => {
         const inName = p.name.toLowerCase().includes(q);
-        const inDesc = (p.description || "").toLowerCase().includes(q);
+        const cleanDesc = (p.description || "").replace(/<!--sweetly_variants:[\s\S]*?-->/g, "").trim().toLowerCase();
+        const inDesc = cleanDesc.includes(q);
         const inCat = (p.category_name || "").toLowerCase().includes(q);
         const inMultiCat = (p.categories || []).some((c) => c.toLowerCase().includes(q));
         const inSec = (p.section_name || "").toLowerCase().includes(q);
@@ -475,7 +470,7 @@ export function StorefrontCatalog({
 
                     {product.description && (
                       <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-brand-600">
-                        {product.description}
+                        {product.description.replace(/<!--sweetly_variants:[\s\S]*?-->/g, "").trim()}
                       </p>
                     )}
                   </div>

@@ -213,8 +213,9 @@ export async function updateShopSettingsAction(formData: FormData) {
   try {
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/settings");
-    revalidatePath(`/${shop.slug}`);
-    revalidatePath(`/${shop.slug}/products`);
+    revalidatePath(`/${shop.slug}`, "layout");
+    revalidatePath(`/${shop.slug}`, "page");
+    revalidatePath(`/${shop.slug}/products`, "page");
   } catch {}
 
   return { success: true, shop: updatedShop };

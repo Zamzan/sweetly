@@ -126,6 +126,9 @@ export function SettingsForm({ shop }: { shop: ShopData }) {
     formData.set("customOrderButtonText", customOrderButtonText);
     formData.set("customOrderTitle", customOrderTitle);
     formData.set("customOrderDescription", customOrderDescription);
+    formData.set("primaryColor", primaryColor);
+    formData.set("themeStyle", themeStyle);
+    formData.set("bannerStyle", bannerStyle);
 
     try {
       const res = await updateShopSettingsAction(formData);
@@ -147,6 +150,9 @@ export function SettingsForm({ shop }: { shop: ShopData }) {
 
           if (res.shop.theme && typeof res.shop.theme === "object") {
             const t = res.shop.theme;
+            if (t.theme_style) setThemeStyle(t.theme_style);
+            if (t.primary_color) setPrimaryColor(t.primary_color);
+            if (t.banner_style) setBannerStyle(t.banner_style);
             setCustomOrderEnabled(t.custom_order_enabled ?? true);
             setCustomOrderButtonText(t.custom_order_button_text ?? "Order Custom");
             setCustomOrderTitle(t.custom_order_title ?? "");
@@ -176,6 +182,10 @@ export function SettingsForm({ shop }: { shop: ShopData }) {
       onSubmit={handleSubmit}
       className="space-y-6"
     >
+      {/* Hidden inputs to guarantee theme fields are always submitted */}
+      <input type="hidden" name="themeStyle" value={themeStyle} />
+      <input type="hidden" name="primaryColor" value={primaryColor} />
+      <input type="hidden" name="bannerStyle" value={bannerStyle} />
       {/* Branding: Logo & Cover Banner */}
       <div className="rounded-2xl border border-brand-100 bg-brand-50/30 p-5">
         <h3 className="mb-4 text-sm font-bold tracking-tight text-brand-900">

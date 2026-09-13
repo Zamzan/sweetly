@@ -4,6 +4,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { StorefrontCatalog, CatalogProduct } from "./_components/storefront-catalog";
 import { StorePaused } from "../_components/store-paused";
 import { StoreOffline } from "../_components/store-offline";
+import { parseProductVariants } from "@/lib/product-variants";
 
 export default async function ShopProductsPage({
   params,
@@ -107,13 +108,7 @@ export default async function ShopProductsPage({
   const sectionMap = new Map((sections ?? []).map((s) => [s.id, s.name]));
 
   const products: CatalogProduct[] = (rawProducts ?? []).map((p: any) => {
-    const variants = Array.isArray(p.variants) ? p.variants : [];
-    const sizes = Array.isArray(p.sizes) && p.sizes.length > 0
-      ? p.sizes
-      : Array.from(new Set(variants.map((v: any) => v.size).filter(Boolean)));
-    const colors = Array.isArray(p.colors) && p.colors.length > 0
-      ? p.colors
-      : Array.from(new Set(variants.map((v: any) => v.color).filter(Boolean)));
+    const parsed = parseProductVariants(p.description, p.variants, p.sizes, p.colors);
     const productCategories = Array.isArray(p.categories) ? p.categories : [];
 
     return {
@@ -121,15 +116,15 @@ export default async function ShopProductsPage({
       name: p.name,
       slug: p.slug,
       price: Number(p.price),
-      description: p.description,
+      description: parsed.cleanDescription,
       category_id: p.category_id,
       category_name: p.category_id ? categoryMap.get(p.category_id) ?? null : null,
       section_id: p.section_id,
       section_name: p.section_id ? sectionMap.get(p.section_id) ?? null : null,
-      has_variants: p.has_variants,
-      variants,
-      sizes,
-      colors,
+      has_variants: parsed.variants.length > 0 || Boolean(p.has_variants),
+      variants: parsed.variants,
+      sizes: parsed.sizes,
+      colors: parsed.colors,
       categories: productCategories,
       category_ids: p.category_ids ?? [],
       section_ids: p.section_ids ?? [],

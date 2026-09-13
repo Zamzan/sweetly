@@ -215,19 +215,24 @@ export function ManualPaymentForm({
       <div className="rounded-2xl border border-emerald-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-lg font-semibold text-brand-900">Sweetly Pro Plan</h2>
-              <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-800">
+              <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-800 border border-emerald-200">
                 Active (₹199/mo)
               </span>
+              {daysRemaining > 0 && (
+                <span className="rounded-full bg-emerald-200/80 px-2.5 py-0.5 text-xs font-extrabold text-emerald-900 border border-emerald-300">
+                  {daysRemaining} Days Remaining
+                </span>
+              )}
             </div>
             <p className="mt-1 text-xs text-brand-600">
               Your store subscription is fully active. All features, storefront hosting, full themes, WhatsApp orders, and unlimited photos are online.
             </p>
           </div>
-          <span className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-semibold text-emerald-800">
-            <span className="h-2 w-2 rounded-full bg-emerald-500" />
-            Active Plan
+          <span className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-semibold text-emerald-800 border border-emerald-200">
+            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            {daysRemaining > 0 ? `${daysRemaining} Days Remaining` : "Active Plan"}
           </span>
         </div>
       </div>
